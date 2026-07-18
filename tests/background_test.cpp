@@ -88,6 +88,23 @@ void testIndependentPowerOfTwoSize() {
     check(pixelAt(buffer, 0, 1) == 0);
 }
 
+void testTileIndexMask() {
+    PixelBuffer buffer;
+    auto target = makeRenderTarget(buffer, Screen::Left);
+    const std::array<ColorIndex, 1> tilemap{0x81};
+    std::array<ColorIndex, 2 * kTilePixels> patterns{};
+    for (std::size_t i = 0; i < kTilePixels; ++i) {
+        patterns[i] = 3;
+        patterns[kTilePixels + i] = 6;
+    }
+    const Background background{8, 8, 1, 1, tilemap.data(), patterns.data(), 0x01};
+
+    drawBackground(target, background, 0, 0);
+    check(pixelAt(buffer, 0, 0) == 6);
+    check(pixelAt(buffer, 7, 7) == 6);
+    check((tilemap[0] & 0x80) != 0);
+}
+
 void testInvalidBackgroundDoesNotDraw() {
     PixelBuffer buffer;
     auto target = makeRenderTarget(buffer, Screen::Left);
@@ -127,6 +144,7 @@ int main() {
     testScrollAndOutside();
     testRightPanelClip();
     testIndependentPowerOfTwoSize();
+    testTileIndexMask();
     testInvalidBackgroundDoesNotDraw();
     testExtremeSignedOffsets();
     return 0;

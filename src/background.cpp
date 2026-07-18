@@ -154,8 +154,9 @@ void drawBackground(RenderTarget target,
         auto tileX = firstTileX;
         auto pixelX = firstPixelX;
         while (destinationX < horizontal.destinationEnd) {
-            const auto tileIndex = background.tilemap[
-                static_cast<std::size_t>(tileY) * background.width + tileX];
+            const auto tileIndex = static_cast<std::uint8_t>(background.tilemap[
+                static_cast<std::size_t>(tileY) * background.width + tileX]
+                & background.tileIndexMask);
             const auto* source = background.patterns
                 + static_cast<std::size_t>(tileIndex) * tilePixelCount
                 + static_cast<std::size_t>(pixelY) * background.tileWidth + pixelX;

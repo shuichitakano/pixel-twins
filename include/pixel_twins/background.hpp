@@ -14,6 +14,7 @@ struct Background {
     std::uint16_t height;
     const std::uint8_t* tilemap;
     const std::uint8_t* patterns;
+    std::uint8_t tileIndexMask = 0xff;
 };
 
 // RenderTargetの左上が仮想画面の(sourceX, sourceY)を参照するようにBGを描画します。

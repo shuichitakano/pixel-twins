@@ -33,6 +33,7 @@ struct Background {
     std::uint16_t height;
     const std::uint8_t* tilemap;
     const std::uint8_t* patterns;
+    std::uint8_t tileIndexMask;
 };
 ```
 
@@ -40,6 +41,11 @@ struct Background {
 `patterns`はタイル番号順に並べた行優先の8ビット画素データです。
 `tileWidth`と`tileHeight`は8、16、32、64、128のいずれかとします。タイル位置は除算ではなく
 ビットシフト、タイル内位置はビットマスクで算出します。
+
+`tilemap`の各値には、タイル番号以外の属性ビットを含められます。描画時のタイル番号は、
+マップ値と`tileIndexMask`のANDで抽出します。`tileIndexMask`のデフォルト値は`0xff`です。
+例えば`0x3f`を指定した場合は下位6ビットをタイル番号、上位2ビットをコリジョンなどの
+アプリケーション固有情報として使用できます。Pixel Twinsは属性ビットの意味を解釈しません。
 
 ### 2.2 スクロールと描画
 
