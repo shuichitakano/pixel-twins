@@ -23,10 +23,32 @@
 仮想画面の外側は、色インデックス0で埋められているものとして描画します。仮想画面の
 ループ処理は提供しません。
 
+BGは次の構造体で指定します。
+
+```cpp
+struct Background {
+    std::uint8_t tileWidth;
+    std::uint8_t tileHeight;
+    std::uint16_t width;
+    std::uint16_t height;
+    const std::uint8_t* tilemap;
+    const std::uint8_t* patterns;
+};
+```
+
+`width`と`height`はタイル単位です。`tilemap`は行優先の8ビットタイル番号配列、
+`patterns`はタイル番号順に並べた行優先の8ビット画素データです。
+
 ### 2.2 スクロールと描画
 
 仮想画面上の任意の位置を、ピクセル単位のオフセットでRenderTargetへ描画できます。
 オフセットには負の値を許可します。
+
+```cpp
+drawBackground(target, background, sourceX, sourceY);
+```
+
+RenderTargetのローカル座標`(0, 0)`には、仮想画面の`(sourceX, sourceY)`が描画されます。
 
 RenderTarget境界に掛からない連続領域では、横方向に8画素展開した高速処理を使用します。
 境界に掛かる部分だけをクリッピング対応処理で描画します。内側の領域で画素ごとの境界判定を

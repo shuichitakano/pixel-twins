@@ -1,3 +1,4 @@
+#include "pixel_twins/background.hpp"
 #include "pixel_twins/framebuffer.hpp"
 #include "pixel_twins/render_target.hpp"
 #include "pixel_twins/sdl_presenter.hpp"
@@ -24,17 +25,55 @@ constexpr std::array<pixel_twins::ColorIndex, 16 * 16> makeSpritePattern() {
 
 constexpr auto kSpritePattern = makeSpritePattern();
 
+constexpr std::array<pixel_twins::ColorIndex, 4 * 8 * 8> makeTilePatterns() {
+    std::array<pixel_twins::ColorIndex, 4 * 8 * 8> patterns{};
+    for (std::size_t tile = 0; tile < 4; ++tile) {
+        for (std::size_t y = 0; y < 8; ++y) {
+            for (std::size_t x = 0; x < 8; ++x) {
+                const auto accent = x == 0 || y == 0;
+                patterns[tile * 64 + y * 8 + x] = accent
+                    ? static_cast<pixel_twins::ColorIndex>(4 + tile % 2)
+                    : static_cast<pixel_twins::ColorIndex>(2 + tile % 2);
+            }
+        }
+    }
+    return patterns;
+}
+
+constexpr std::size_t kMapWidth = 24;
+constexpr std::size_t kMapHeight = 16;
+
+constexpr std::array<std::uint8_t, kMapWidth * kMapHeight> makeTilemap() {
+    std::array<std::uint8_t, kMapWidth * kMapHeight> tilemap{};
+    for (std::size_t y = 0; y < kMapHeight; ++y) {
+        for (std::size_t x = 0; x < kMapWidth; ++x) {
+            tilemap[y * kMapWidth + x] = static_cast<std::uint8_t>((x + y) % 4);
+        }
+    }
+    return tilemap;
+}
+
+constexpr auto kTilePatterns = makeTilePatterns();
+constexpr auto kTilemap = makeTilemap();
+
 void drawTestPattern(pixel_twins::Framebuffer& framebuffer) {
     using namespace pixel_twins;
 
     static_cast<void>(framebuffer.setPaletteColor(2, Rgb{32, 80, 160}));
     static_cast<void>(framebuffer.setPaletteColor(3, Rgb{160, 48, 64}));
     static_cast<void>(framebuffer.setPaletteColor(4, Rgb{240, 192, 48}));
+    static_cast<void>(framebuffer.setPaletteColor(5, Rgb{96, 208, 144}));
 
     auto left = makeRenderTarget(framebuffer.drawBuffer(), Screen::Left);
     auto right = makeRenderTarget(framebuffer.drawBuffer(), Screen::Right);
-    clear(left, 2);
-    clear(right, 3);
+    const Background background{8,
+                                8,
+                                static_cast<std::uint16_t>(kMapWidth),
+                                static_cast<std::uint16_t>(kMapHeight),
+                                kTilemap.data(),
+                                kTilePatterns.data()};
+    drawBackground(left, background, 0, 0);
+    drawBackground(right, background, 24, 4);
 
     for (std::int16_t y = 0; y < static_cast<std::int16_t>(kScreenHeight); ++y) {
         const auto x = static_cast<std::int16_t>(y * 4 / 3);

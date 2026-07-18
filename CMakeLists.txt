@@ -6,6 +6,7 @@ option(PIXEL_TWINS_BUILD_EXAMPLES "Pixel Twinsのサンプルをビルドする"
 option(PIXEL_TWINS_BUILD_TESTS "Pixel Twinsのテストをビルドする" ON)
 
 add_library(pixel_twins
+    src/background.cpp
     src/framebuffer.cpp
     src/render_target.cpp
     src/sprite.cpp
