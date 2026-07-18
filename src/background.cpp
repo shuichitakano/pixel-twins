@@ -43,6 +43,43 @@ void fillRow(ColorIndex* destination, std::uint16_t width, ColorIndex color) noe
     }
 }
 
+void fillRows(RenderTarget target,
+              std::uint16_t firstY,
+              std::uint16_t endY,
+              ColorIndex color) noexcept PIXEL_TWINS_SRAM;
+void fillRows(RenderTarget target,
+              std::uint16_t firstY,
+              std::uint16_t endY,
+              ColorIndex color) noexcept {
+    for (auto y = firstY; y < endY; ++y) {
+        auto* destination = target.pixels
+            + static_cast<std::size_t>(target.originY + y) * target.stride + target.originX;
+        fillRow(destination, target.width, color);
+    }
+}
+
+struct AxisRange {
+    std::uint16_t destinationStart;
+    std::uint16_t destinationEnd;
+    std::uint32_t sourceStart;
+};
+
+[[nodiscard]] PIXEL_TWINS_FORCE_INLINE AxisRange clipAxis(std::int32_t source,
+                                                           std::uint16_t destinationSize,
+                                                           std::uint32_t sourceSize) noexcept {
+    const auto source64 = static_cast<std::int64_t>(source);
+    const auto sourceSize64 = static_cast<std::int64_t>(sourceSize);
+    const auto destinationSize64 = static_cast<std::int64_t>(destinationSize);
+    const auto destinationStart64 = std::clamp(-source64, std::int64_t{0}, destinationSize64);
+    const auto firstSource64 = source64 + destinationStart64;
+    const auto available64 = std::max<std::int64_t>(0, sourceSize64 - firstSource64);
+    const auto count64 = std::min(destinationSize64 - destinationStart64, available64);
+
+    return AxisRange{static_cast<std::uint16_t>(destinationStart64),
+                     static_cast<std::uint16_t>(destinationStart64 + count64),
+                     static_cast<std::uint32_t>(std::max<std::int64_t>(0, firstSource64))};
+}
+
 } // namespace
 
 void drawBackground(RenderTarget target,
@@ -54,7 +91,7 @@ void drawBackground(RenderTarget target,
     }
 
     const auto validTileSize = background.tileWidth != 0 && background.tileHeight != 0
-        && background.tileWidth % 8 == 0 && background.tileHeight % 8 == 0;
+        && (background.tileWidth & 7U) == 0 && (background.tileHeight & 7U) == 0;
     if (!validTileSize || background.tilemap == nullptr || background.patterns == nullptr) {
         return;
     }
@@ -63,67 +100,78 @@ void drawBackground(RenderTarget target,
         return;
     }
 
-    const auto virtualWidth = static_cast<std::int32_t>(background.width) * background.tileWidth;
-    const auto virtualHeight = static_cast<std::int32_t>(background.height) * background.tileHeight;
+    const auto virtualWidth = static_cast<std::uint32_t>(background.width)
+        * background.tileWidth;
+    const auto virtualHeight = static_cast<std::uint32_t>(background.height)
+        * background.tileHeight;
+    const auto horizontal = clipAxis(sourceX, target.width, virtualWidth);
+    const auto vertical = clipAxis(sourceY, target.height, virtualHeight);
+
+    fillRows(target, 0, vertical.destinationStart, kTransparentColor);
+    fillRows(target, vertical.destinationEnd, target.height, kTransparentColor);
+    if (horizontal.destinationStart == horizontal.destinationEnd
+        || vertical.destinationStart == vertical.destinationEnd) {
+        fillRows(target,
+                 vertical.destinationStart,
+                 vertical.destinationEnd,
+                 kTransparentColor);
+        return;
+    }
+
+    const auto firstTileX = horizontal.sourceStart / background.tileWidth;
+    const auto firstPixelX = horizontal.sourceStart - firstTileX * background.tileWidth;
+    auto tileY = vertical.sourceStart / background.tileHeight;
+    auto pixelY = vertical.sourceStart - tileY * background.tileHeight;
     const auto tilePixelCount = static_cast<std::size_t>(background.tileWidth)
         * background.tileHeight;
 
-    for (std::uint16_t destinationY = 0; destinationY < target.height; ++destinationY) {
+    for (auto destinationY = vertical.destinationStart;
+         destinationY < vertical.destinationEnd;
+         ++destinationY) {
         auto* destination = target.pixels
             + static_cast<std::size_t>(target.originY + destinationY) * target.stride
             + target.originX;
-        const auto virtualY = sourceY + destinationY;
-        if (virtualY < 0 || virtualY >= virtualHeight) {
-            fillRow(destination, target.width, kTransparentColor);
-            continue;
-        }
+        fillRow(destination, horizontal.destinationStart, kTransparentColor);
 
-        const auto tileY = virtualY / background.tileHeight;
-        const auto pixelY = virtualY % background.tileHeight;
-        std::int32_t destinationX = 0;
-        auto virtualX = sourceX;
-
-        if (virtualX < 0) {
-            const auto outside = std::min<std::int32_t>(target.width, -virtualX);
-            fillRow(destination, static_cast<std::uint16_t>(outside), kTransparentColor);
-            destinationX += outside;
-            virtualX += outside;
-        }
-
-        const auto validEnd = std::min<std::int32_t>(
-            target.width,
-            destinationX + std::max<std::int32_t>(0, virtualWidth - virtualX));
-
-        while (destinationX < validEnd) {
-            const auto tileX = virtualX / background.tileWidth;
-            const auto pixelX = virtualX % background.tileWidth;
+        auto destinationX = horizontal.destinationStart;
+        auto tileX = firstTileX;
+        auto pixelX = firstPixelX;
+        while (destinationX < horizontal.destinationEnd) {
             const auto tileIndex = background.tilemap[
-                static_cast<std::size_t>(tileY) * background.width
-                + static_cast<std::size_t>(tileX)];
+                static_cast<std::size_t>(tileY) * background.width + tileX];
             const auto* source = background.patterns
                 + static_cast<std::size_t>(tileIndex) * tilePixelCount
                 + static_cast<std::size_t>(pixelY) * background.tileWidth + pixelX;
-            auto segmentWidth = std::min<std::int32_t>(background.tileWidth - pixelX,
-                                                       validEnd - destinationX);
+            auto segmentWidth = std::min<std::uint32_t>(
+                background.tileWidth - pixelX,
+                static_cast<std::uint32_t>(horizontal.destinationEnd - destinationX));
 
             while (segmentWidth >= 8) {
                 copyEight(destination + destinationX, source);
-                destinationX += 8;
-                virtualX += 8;
+                destinationX = static_cast<std::uint16_t>(destinationX + 8);
                 source += 8;
                 segmentWidth -= 8;
+                pixelX += 8;
             }
             while (segmentWidth > 0) {
                 destination[destinationX++] = *source++;
-                ++virtualX;
                 --segmentWidth;
+                ++pixelX;
+            }
+            if (pixelX == background.tileWidth) {
+                pixelX = 0;
+                ++tileX;
             }
         }
 
-        if (destinationX < target.width) {
-            fillRow(destination + destinationX,
-                    static_cast<std::uint16_t>(target.width - destinationX),
-                    kTransparentColor);
+        fillRow(destination + horizontal.destinationEnd,
+                static_cast<std::uint16_t>(target.width - horizontal.destinationEnd),
+                kTransparentColor);
+
+        ++pixelY;
+        if (pixelY == background.tileHeight) {
+            pixelY = 0;
+            ++tileY;
         }
     }
 }

@@ -5,6 +5,7 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 
 namespace {
 
@@ -83,11 +84,28 @@ void testInvalidBackgroundDoesNotDraw() {
     check(pixelAt(buffer, 159, 119) == 7);
 }
 
+void testExtremeSignedOffsets() {
+    PixelBuffer buffer;
+    auto target = makeRenderTarget(buffer, Screen::Left);
+    TestBackground data;
+
+    clear(target, 7);
+    drawBackground(target, data.view(), INT32_MIN, INT32_MIN);
+    check(pixelAt(buffer, 0, 0) == 0);
+    check(pixelAt(buffer, 159, 119) == 0);
+
+    clear(target, 7);
+    drawBackground(target, data.view(), INT32_MAX, INT32_MAX);
+    check(pixelAt(buffer, 0, 0) == 0);
+    check(pixelAt(buffer, 159, 119) == 0);
+}
+
 } // namespace
 
 int main() {
     testScrollAndOutside();
     testRightPanelClip();
     testInvalidBackgroundDoesNotDraw();
+    testExtremeSignedOffsets();
     return 0;
 }
