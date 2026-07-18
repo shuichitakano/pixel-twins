@@ -4,6 +4,7 @@
 #include "test_check.hpp"
 
 #include <cstddef>
+#include <thread>
 
 namespace {
 
@@ -32,6 +33,24 @@ void testQueueCapacityAndOrder() {
     }
     SfxRequest value;
     check(!queue.tryPop(value));
+}
+
+void testQueueBetweenTwoThreads() {
+    SfxRequestQueue queue;
+    constexpr std::size_t count = 10000;
+    std::thread producer([&queue] {
+        for (std::size_t i = 0; i < count; ++i) {
+            auto value = request(kLongLeft, 0);
+            value.voice.frequency = static_cast<float>(i);
+            while (!queue.tryPush(value)) std::this_thread::yield();
+        }
+    });
+    for (std::size_t i = 0; i < count; ++i) {
+        SfxRequest value;
+        while (!queue.tryPop(value)) std::this_thread::yield();
+        check(value.voice.frequency == static_cast<float>(i));
+    }
+    producer.join();
 }
 
 void testPriorityPreventsSteal() {
@@ -71,6 +90,7 @@ void testStopAllDiscardsPendingRequests() {
 
 int main() {
     testQueueCapacityAndOrder();
+    testQueueBetweenTwoThreads();
     testPriorityPreventsSteal();
     testInvalidRequestIsRejected();
     testStopAllDiscardsPendingRequests();
