@@ -17,6 +17,28 @@ struct SfxRequest {
     std::uint8_t priority = 0;
 };
 
+struct SfxPreset {
+    Timbre timbre;
+    float frequency = 440.0F;
+    float endFrequency = 440.0F;
+    float pitchSeconds = 0.0F;
+    float holdSeconds = 0.0F;
+    float velocity = 1.0F;
+    std::uint8_t priority = 0;
+};
+
+[[nodiscard]] inline SfxRequest makeSfxRequest(const SfxPreset& preset,
+                                               float pan = 0.0F) noexcept {
+    return {{&preset.timbre,
+             preset.frequency,
+             preset.endFrequency,
+             preset.pitchSeconds,
+             preset.holdSeconds,
+             preset.velocity,
+             pan},
+            preset.priority};
+}
+
 class SfxRequestQueue {
 public:
     [[nodiscard]] bool tryPush(const SfxRequest& request) noexcept;

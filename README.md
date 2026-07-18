@@ -113,6 +113,11 @@ ctest --test-dir build --output-on-failure
 - 2人分の共通コントローラー状態とSDL3入力
 - SDL3によるmacOS表示
 
+BGM用シーケンスJSONは `tools/sequence_converter.py`、効果音プリセットJSONは
+`tools/sfx_converter.py` で、マイコンから直接参照できるC++定数へ変換できます。
+変換後の再生時にはパースや動的確保を行いません。効果音は `SfxPreset` と
+`makeSfxRequest()` を使って再生要求を組み立てます。
+
 画像群の共通パレット生成、8-bitインデックスPNGへの変換、減色品質と容量のレポート生成には、
 [アセットコンバーター](tools/asset_converter/README.md)を使用します。共通パレット中間画像に加え、
 パレット、BG、スプライトの実機用バイナリを生成します。
