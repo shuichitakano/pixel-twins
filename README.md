@@ -99,6 +99,9 @@ ctest --test-dir build --output-on-failure
 ./build/examples/framebuffer/pixel_twins_framebuffer_example
 ```
 
+RP2350/Pico SDK向けのビルド基盤とプラットフォーム境界は
+[RP2350移植設計](docs/rp2350_port.md)を参照してください。
+
 現在の実装には、以下が含まれます。
 
 - 8ビットパレット式ダブルフレームバッファ

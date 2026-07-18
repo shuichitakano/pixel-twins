@@ -2,8 +2,13 @@ cmake_minimum_required(VERSION 3.16)
 
 project(pixel_twins VERSION 0.1.0 LANGUAGES CXX)
 
-option(PIXEL_TWINS_BUILD_EXAMPLES "Pixel Twinsのサンプルをビルドする" ON)
-option(PIXEL_TWINS_BUILD_TESTS "Pixel Twinsのテストをビルドする" ON)
+if(PICO_SDK_VERSION_STRING)
+    set(_pixel_twins_host_default OFF)
+else()
+    set(_pixel_twins_host_default ON)
+endif()
+option(PIXEL_TWINS_BUILD_EXAMPLES "Pixel TwinsのSDLサンプルをビルドする" ${_pixel_twins_host_default})
+option(PIXEL_TWINS_BUILD_TESTS "Pixel Twinsのホストテストをビルドする" ${_pixel_twins_host_default})
 
 add_library(pixel_twins
     src/audio_system.cpp
@@ -31,6 +36,12 @@ target_compile_features(pixel_twins PUBLIC cxx_std_17)
 set_target_properties(pixel_twins PROPERTIES
     CXX_EXTENSIONS OFF
 )
+
+if(PICO_SDK_VERSION_STRING)
+    # 共通ソース自体をRP2350用定義でコンパイルし、SRAM配置属性を有効にする。
+    target_link_libraries(pixel_twins PUBLIC pico_platform)
+    add_subdirectory(platform/rp2350)
+endif()
 
 if(PIXEL_TWINS_BUILD_EXAMPLES)
     add_subdirectory(platform/sdl)

@@ -51,19 +51,19 @@ void drawEllipse(RenderTarget target,
                  std::uint16_t radiusY,
                  ColorIndex color) noexcept PIXEL_TWINS_SRAM;
 
-inline void fillCircle(RenderTarget target,
+PIXEL_TWINS_SRAM inline void fillCircle(RenderTarget target,
                        std::int16_t centerX,
                        std::int16_t centerY,
                        std::uint16_t radius,
-                       ColorIndex color) noexcept PIXEL_TWINS_SRAM {
+                       ColorIndex color) noexcept {
     fillEllipse(target, centerX, centerY, radius, radius, color);
 }
 
-inline void drawCircle(RenderTarget target,
+PIXEL_TWINS_SRAM inline void drawCircle(RenderTarget target,
                        std::int16_t centerX,
                        std::int16_t centerY,
                        std::uint16_t radius,
-                       ColorIndex color) noexcept PIXEL_TWINS_SRAM {
+                       ColorIndex color) noexcept {
     drawEllipse(target, centerX, centerY, radius, radius, color);
 }
 
