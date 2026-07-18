@@ -1,5 +1,6 @@
 #include "pixel_twins/background.hpp"
 #include "pixel_twins/framebuffer.hpp"
+#include "pixel_twins/primitives.hpp"
 #include "pixel_twins/render_target.hpp"
 #include "pixel_twins/sdl_presenter.hpp"
 #include "pixel_twins/sprite.hpp"
@@ -85,6 +86,11 @@ void drawTestPattern(pixel_twins::Framebuffer& framebuffer) {
     drawSprite(left, Sprite{72, 52, 16, 16, kSpritePattern.data()});
     drawSpriteEx(right,
                  SpriteEx{64, 44, 32, 32, 16, 16, kSpritePattern.data()});
+    drawRectangle(left, 4, 4, 36, 20, kWhiteColor);
+    drawLine(left, 4, 24, 40, 4, 5);
+    fillTriangle(right, 8, 8, 40, 8, 24, 28, 4);
+    drawEllipse(right, 128, 92, 20, 8, kWhiteColor);
+    fillCircle(left, 128, 92, 10, 5);
 }
 
 } // namespace
