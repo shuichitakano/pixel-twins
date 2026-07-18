@@ -7,6 +7,7 @@ option(PIXEL_TWINS_BUILD_TESTS "Pixel Twinsのテストをビルドする" ON)
 
 add_library(pixel_twins
     src/background.cpp
+    src/font.cpp
     src/framebuffer.cpp
     src/primitives.cpp
     src/render_target.cpp

@@ -1,4 +1,5 @@
 #include "pixel_twins/background.hpp"
+#include "pixel_twins/font.hpp"
 #include "pixel_twins/framebuffer.hpp"
 #include "pixel_twins/primitives.hpp"
 #include "pixel_twins/render_target.hpp"
@@ -57,6 +58,45 @@ constexpr std::array<std::uint8_t, kMapWidth * kMapHeight> makeTilemap() {
 constexpr auto kTilePatterns = makeTilePatterns();
 constexpr auto kTilemap = makeTilemap();
 
+constexpr pixel_twins::Glyph makeGlyph(const std::array<std::uint8_t, 7>& bodyRows) {
+    pixel_twins::Glyph glyph{};
+    for (std::size_t y = 0; y < bodyRows.size(); ++y) {
+        glyph.rows[y + 1].body = bodyRows[y];
+    }
+    for (std::size_t y = 0; y < pixel_twins::kGlyphHeight; ++y) {
+        for (std::size_t x = 0; x < pixel_twins::kGlyphWidth; ++x) {
+            if ((glyph.rows[y].body & (0x80U >> x)) == 0) {
+                continue;
+            }
+            for (int dy = -1; dy <= 1; ++dy) {
+                for (int dx = -1; dx <= 1; ++dx) {
+                    const auto outlineX = static_cast<int>(x) + dx;
+                    const auto outlineY = static_cast<int>(y) + dy;
+                    if (outlineX >= 0 && outlineX < pixel_twins::kGlyphWidth && outlineY >= 0
+                        && outlineY < pixel_twins::kGlyphHeight) {
+                        glyph.rows[static_cast<std::size_t>(outlineY)].outline
+                            |= static_cast<std::uint8_t>(0x80U >> outlineX);
+                    }
+                }
+            }
+        }
+    }
+    for (auto& row : glyph.rows) {
+        row.outline = static_cast<std::uint8_t>(row.outline & ~row.body);
+    }
+    return glyph;
+}
+
+constexpr std::array<pixel_twins::Glyph, 5> makeSampleFontGlyphs() {
+    std::array<pixel_twins::Glyph, 5> glyphs{};
+    glyphs[0] = makeGlyph({0xf0, 0x88, 0x88, 0xf0, 0x80, 0x80, 0x80});
+    glyphs[4] = makeGlyph({0xf8, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20});
+    return glyphs;
+}
+
+constexpr auto kSampleFontGlyphs = makeSampleFontGlyphs();
+constexpr pixel_twins::BitmapFont kSampleFont{kSampleFontGlyphs.data(), 'P', 5, 'P', 1};
+
 void drawTestPattern(pixel_twins::Framebuffer& framebuffer) {
     using namespace pixel_twins;
 
@@ -91,6 +131,8 @@ void drawTestPattern(pixel_twins::Framebuffer& framebuffer) {
     fillTriangle(right, 8, 8, 40, 8, 24, 28, 4);
     drawEllipse(right, 128, 92, 20, 8, kWhiteColor);
     fillCircle(left, 128, 92, 10, 5);
+    drawText(left, kSampleFont, 8, 104, "PT", kWhiteColor, 7);
+    drawText(right, kSampleFont, 132, 104, "PT", 5, 6);
 }
 
 } // namespace
