@@ -1,12 +1,28 @@
 #include "pixel_twins/framebuffer.hpp"
 #include "pixel_twins/render_target.hpp"
 #include "pixel_twins/sdl_presenter.hpp"
+#include "pixel_twins/sprite.hpp"
 
+#include <array>
 #include <chrono>
 #include <string_view>
 #include <thread>
 
 namespace {
+
+constexpr std::array<pixel_twins::ColorIndex, 16 * 16> makeSpritePattern() {
+    std::array<pixel_twins::ColorIndex, 16 * 16> pattern{};
+    for (std::size_t y = 0; y < 16; ++y) {
+        for (std::size_t x = 0; x < 16; ++x) {
+            const auto border = x == 0 || y == 0 || x == 15 || y == 15;
+            const auto diagonal = x == y || x + y == 15;
+            pattern[y * 16 + x] = border ? 1 : (diagonal ? 255 : 0);
+        }
+    }
+    return pattern;
+}
+
+constexpr auto kSpritePattern = makeSpritePattern();
 
 void drawTestPattern(pixel_twins::Framebuffer& framebuffer) {
     using namespace pixel_twins;
@@ -26,6 +42,10 @@ void drawTestPattern(pixel_twins::Framebuffer& framebuffer) {
         constexpr auto panelWidth = static_cast<std::int16_t>(kPanelWidth);
         static_cast<void>(putPixel(right, static_cast<std::int16_t>(panelWidth - 1 - x), y, 4));
     }
+
+    drawSprite(left, Sprite{72, 52, 16, 16, kInvalidSpriteIndex, kSpritePattern.data()});
+    drawSpriteEx(right,
+                 SpriteEx{64, 44, 32, 32, 16, 16, kInvalidSpriteIndex, kSpritePattern.data()});
 }
 
 } // namespace

@@ -23,10 +23,10 @@ enum class Screen : std::uint8_t {
 
 [[nodiscard]] RenderTarget makeRenderTarget(PixelBuffer& buffer, Screen screen) noexcept;
 
-void clear(RenderTarget target, ColorIndex color) noexcept;
+void clear(RenderTarget target, ColorIndex color) noexcept PIXEL_TWINS_SRAM;
 [[nodiscard]] bool putPixel(RenderTarget target,
                             std::int16_t x,
                             std::int16_t y,
-                            ColorIndex color) noexcept;
+                            ColorIndex color) noexcept PIXEL_TWINS_SRAM;
 
 } // namespace pixel_twins

@@ -8,6 +8,7 @@ option(PIXEL_TWINS_BUILD_TESTS "Pixel Twinsのテストをビルドする" ON)
 add_library(pixel_twins
     src/framebuffer.cpp
     src/render_target.cpp
+    src/sprite.cpp
 )
 add_library(pixel_twins::pixel_twins ALIAS pixel_twins)
 

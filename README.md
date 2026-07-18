@@ -93,6 +93,16 @@ ctest --test-dir build --output-on-failure
 ./build/examples/framebuffer/pixel_twins_framebuffer_example
 ```
 
+現在の実装には、以下が含まれます。
+
+- 8ビットパレット式ダブルフレームバッファ
+- 全画面、左画面、右画面のRenderTarget
+- 通常スプライト描画
+- 最近傍法による拡大縮小付きスプライト描画
+- 固定長スプライトアロケーター
+- 180本のYバケット
+- SDL3によるmacOS表示
+
 ## ドキュメントの言語
 
 本リポジトリは日本人向けのサンプルコードとして公開するため、README、設計資料、

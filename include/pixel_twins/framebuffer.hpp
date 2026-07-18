@@ -1,5 +1,7 @@
 #pragma once
 
+#include "pixel_twins/platform.hpp"
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -40,7 +42,7 @@ public:
     [[nodiscard]] const Palette& palette() const noexcept;
     [[nodiscard]] bool setPaletteColor(ColorIndex index, Rgb color) noexcept;
 
-    void flip() noexcept;
+    void flip() noexcept PIXEL_TWINS_SRAM;
 
 private:
     std::array<PixelBuffer, 2> buffers_;
