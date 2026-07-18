@@ -64,6 +64,19 @@ struct AxisRange {
     std::uint32_t sourceStart;
 };
 
+[[nodiscard]] PIXEL_TWINS_FORCE_INLINE bool isValidTileSize(std::uint8_t size) noexcept {
+    return size >= 8 && (size & static_cast<std::uint8_t>(size - 1)) == 0;
+}
+
+[[nodiscard]] PIXEL_TWINS_FORCE_INLINE std::uint8_t tileShift(std::uint8_t size) noexcept {
+    std::uint8_t shift = 0;
+    while (size > 1) {
+        size = static_cast<std::uint8_t>(size >> 1U);
+        ++shift;
+    }
+    return shift;
+}
+
 [[nodiscard]] PIXEL_TWINS_FORCE_INLINE AxisRange clipAxis(std::int32_t source,
                                                            std::uint16_t destinationSize,
                                                            std::uint32_t sourceSize) noexcept {
@@ -90,8 +103,8 @@ void drawBackground(RenderTarget target,
         return;
     }
 
-    const auto validTileSize = background.tileWidth != 0 && background.tileHeight != 0
-        && (background.tileWidth & 7U) == 0 && (background.tileHeight & 7U) == 0;
+    const auto validTileSize = isValidTileSize(background.tileWidth)
+        && isValidTileSize(background.tileHeight);
     if (!validTileSize || background.tilemap == nullptr || background.patterns == nullptr) {
         return;
     }
@@ -118,10 +131,14 @@ void drawBackground(RenderTarget target,
         return;
     }
 
-    const auto firstTileX = horizontal.sourceStart / background.tileWidth;
-    const auto firstPixelX = horizontal.sourceStart - firstTileX * background.tileWidth;
-    auto tileY = vertical.sourceStart / background.tileHeight;
-    auto pixelY = vertical.sourceStart - tileY * background.tileHeight;
+    const auto tileWidthShift = tileShift(background.tileWidth);
+    const auto tileHeightShift = tileShift(background.tileHeight);
+    const auto tileWidthMask = static_cast<std::uint32_t>(background.tileWidth - 1);
+    const auto tileHeightMask = static_cast<std::uint32_t>(background.tileHeight - 1);
+    const auto firstTileX = horizontal.sourceStart >> tileWidthShift;
+    const auto firstPixelX = horizontal.sourceStart & tileWidthMask;
+    auto tileY = vertical.sourceStart >> tileHeightShift;
+    auto pixelY = vertical.sourceStart & tileHeightMask;
     const auto tilePixelCount = static_cast<std::size_t>(background.tileWidth)
         * background.tileHeight;
 

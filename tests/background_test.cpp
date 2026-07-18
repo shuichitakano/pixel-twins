@@ -74,12 +74,33 @@ void testRightPanelClip() {
     check(pixelAt(buffer, 319, 119) == 0);
 }
 
+void testIndependentPowerOfTwoSize() {
+    PixelBuffer buffer;
+    auto target = makeRenderTarget(buffer, Screen::Left);
+    const std::array<ColorIndex, 1> tilemap{0};
+    std::array<ColorIndex, 16 * 8> patterns{};
+    patterns.fill(6);
+    const Background background{16, 8, 1, 1, tilemap.data(), patterns.data()};
+
+    drawBackground(target, background, 15, 7);
+    check(pixelAt(buffer, 0, 0) == 6);
+    check(pixelAt(buffer, 1, 0) == 0);
+    check(pixelAt(buffer, 0, 1) == 0);
+}
+
 void testInvalidBackgroundDoesNotDraw() {
     PixelBuffer buffer;
     auto target = makeRenderTarget(buffer, Screen::Left);
     clear(target, 7);
     const Background invalid{7, 8, 1, 1, nullptr, nullptr};
     drawBackground(target, invalid, 0, 0);
+    check(pixelAt(buffer, 0, 0) == 7);
+    check(pixelAt(buffer, 159, 119) == 7);
+
+    const std::array<ColorIndex, 1> tilemap{0};
+    const std::array<ColorIndex, 24 * 8> patterns{};
+    const Background notPowerOfTwo{24, 8, 1, 1, tilemap.data(), patterns.data()};
+    drawBackground(target, notPowerOfTwo, 0, 0);
     check(pixelAt(buffer, 0, 0) == 7);
     check(pixelAt(buffer, 159, 119) == 7);
 }
@@ -105,6 +126,7 @@ void testExtremeSignedOffsets() {
 int main() {
     testScrollAndOutside();
     testRightPanelClip();
+    testIndependentPowerOfTwoSize();
     testInvalidBackgroundDoesNotDraw();
     testExtremeSignedOffsets();
     return 0;
