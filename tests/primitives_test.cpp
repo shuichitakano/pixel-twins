@@ -55,6 +55,7 @@ void testTriangles() {
     fillTriangle(target, 2, 2, 8, 2, 2, 8, 4);
     check(pixelAt(buffer, 2, 2) == 4);
     check(pixelAt(buffer, 4, 4) == 4);
+    check(pixelAt(buffer, 5, 5) == 0);
     check(pixelAt(buffer, 8, 8) == 0);
     fillTriangle(target, 2, 8, 8, 2, 8, 8, 5);
     check(pixelAt(buffer, 7, 7) == 5);

@@ -283,15 +283,19 @@ void fillTriangle(RenderTarget target,
         return;
     }
     const auto sign = area > 0 ? std::int64_t{1} : std::int64_t{-1};
-    const auto stepX0 = static_cast<std::int64_t>(y2 - y1) * sign;
-    const auto stepX1 = static_cast<std::int64_t>(y0 - y2) * sign;
-    const auto stepX2 = static_cast<std::int64_t>(y1 - y0) * sign;
-    const auto stepY0 = static_cast<std::int64_t>(x1 - x2) * sign;
-    const auto stepY1 = static_cast<std::int64_t>(x2 - x0) * sign;
-    const auto stepY2 = static_cast<std::int64_t>(x0 - x1) * sign;
-    auto row0 = edge(x1, y1, x2, y2, minX, minY) * sign;
-    auto row1 = edge(x2, y2, x0, y0, minX, minY) * sign;
-    auto row2 = edge(x0, y0, x1, y1, minX, minY) * sign;
+    // Keep edge values doubled so the half-pixel center offset stays integral.
+    const auto stepX0 = static_cast<std::int64_t>(2) * (y2 - y1) * sign;
+    const auto stepX1 = static_cast<std::int64_t>(2) * (y0 - y2) * sign;
+    const auto stepX2 = static_cast<std::int64_t>(2) * (y1 - y0) * sign;
+    const auto stepY0 = static_cast<std::int64_t>(2) * (x1 - x2) * sign;
+    const auto stepY1 = static_cast<std::int64_t>(2) * (x2 - x0) * sign;
+    const auto stepY2 = static_cast<std::int64_t>(2) * (x0 - x1) * sign;
+    auto row0 = (2 * edge(x1, y1, x2, y2, minX, minY)
+                 + (y2 - y1) + (x1 - x2)) * sign;
+    auto row1 = (2 * edge(x2, y2, x0, y0, minX, minY)
+                 + (y0 - y2) + (x2 - x0)) * sign;
+    auto row2 = (2 * edge(x0, y0, x1, y1, minX, minY)
+                 + (y1 - y0) + (x0 - x1)) * sign;
 
     for (auto y = minY; y <= maxY; ++y) {
         auto value0 = row0;
