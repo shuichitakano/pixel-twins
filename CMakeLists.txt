@@ -6,7 +6,9 @@ option(PIXEL_TWINS_BUILD_EXAMPLES "Pixel Twinsのサンプルをビルドする"
 option(PIXEL_TWINS_BUILD_TESTS "Pixel Twinsのテストをビルドする" ON)
 
 add_library(pixel_twins
+    src/audio_system.cpp
     src/background.cpp
+    src/background_asset.cpp
     src/controller.cpp
     src/font.cpp
     src/framebuffer.cpp
@@ -16,6 +18,7 @@ add_library(pixel_twins
     src/sound.cpp
     src/sound_waves.cpp
     src/sprite.cpp
+    src/sprite_asset.cpp
 )
 add_library(pixel_twins::pixel_twins ALIAS pixel_twins)
 

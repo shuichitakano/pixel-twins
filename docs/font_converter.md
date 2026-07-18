@@ -29,6 +29,10 @@ python3 tools/font_converter.py \
   --symbol kWizwardFont
 ```
 
+頻繁に描画するゲームプレイ用フォントは`--sram`を指定すると、生成グリフへ
+`PIXEL_TWINS_ASSET_SRAM`を付けてRP2350のSRAMへ配置できます。タイトルなど低頻度用途では省略し、
+Flashから直接参照できます。
+
 出力`.cpp`は、95文字の場合に`Glyph`配列1,710バイトと小さな`BitmapFont`定義を持ちます。
 `.hpp`は`extern`宣言だけを持つため、複数の翻訳単位からインクルードしても配列は複製されません。
 縁のパレット番号は既定で1です。別の固定色を使う場合は`--outline-index`で指定します。

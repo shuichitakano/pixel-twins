@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "name": "example-gameplay-palette",
+  "palette": {
+    "asset_range": [32, 254],
+    "sample_pixels": 1000000,
+    "max_pixels_per_asset": 4096,
+    "quantizer": "fast_octree",
+    "reserved": [
+      {"index": 2, "name": "effect red", "color": "#ff3040"},
+      {"index": 3, "name": "effect orange", "color": "#ff9028"},
+      {"index": 4, "name": "effect yellow", "color": "#ffe050"},
+      {"index": 18, "name": "font outline", "color": "#203040"},
+      {"index": 19, "name": "marker", "color": "#40f0e0"}
+    ]
+  },
+  "assets": [
+    {"id": "player", "kind": "sprite", "source": "images/player.png", "alpha_threshold": 0, "palette_weight": 4},
+    {"id": "map", "kind": "background", "source": "images/map.png"}
+  ]
+}

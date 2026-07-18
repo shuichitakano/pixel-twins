@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pixel-twins-asset-converter"
+version = "0.1.0"
+description = "Pixel Twins向け共通パレット生成・減色レポートツール"
+requires-python = ">=3.9"
+dependencies = ["Pillow>=9.1"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+pixel-twins-assets = "pixel_twins_asset_converter.cli:main"
+pixel-twins-sprites = "pixel_twins_asset_converter.sprite_cli:main"
+pixel-twins-background = "pixel_twins_asset_converter.background_cli:main"
+pixel-twins-raw-image = "pixel_twins_asset_converter.raw_image_cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

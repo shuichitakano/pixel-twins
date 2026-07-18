@@ -48,6 +48,9 @@ macOS向けの初期実装にはSDLを使用します。SDLはホスト環境と
 BG、スプライト、拡大縮小、プリミティブ、Yバケットについては、
 [描画機能仕様](docs/rendering.md)で定義します。
 
+変換済みBGとスプライトの実機向け形式は、[BGアセットバイナリ仕様](docs/background_asset_binary.md)と
+[スプライトアセットバイナリ仕様](docs/sprite_asset_binary.md)で定義します。
+
 ゲームから見えるコントローラー入力については、
 [コントローラー仕様](docs/controller.md)で定義します。
 
@@ -109,6 +112,10 @@ ctest --test-dir build --output-on-failure
 - 固定縁色・可変文字色・可変strideの8×9フォント描画
 - 2人分の共通コントローラー状態とSDL3入力
 - SDL3によるmacOS表示
+
+画像群の共通パレット生成、8-bitインデックスPNGへの変換、減色品質と容量のレポート生成には、
+[アセットコンバーター](tools/asset_converter/README.md)を使用します。共通パレット中間画像に加え、
+パレット、BG、スプライトの実機用バイナリを生成します。
 
 ## ドキュメントの言語
 

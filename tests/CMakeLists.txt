@@ -12,12 +12,24 @@ target_link_libraries(pixel_twins_sprite_tests PRIVATE pixel_twins::pixel_twins)
 
 add_test(NAME pixel_twins_sprite_tests COMMAND pixel_twins_sprite_tests)
 
+add_executable(pixel_twins_sprite_asset_tests
+    sprite_asset_test.cpp
+)
+target_link_libraries(pixel_twins_sprite_asset_tests PRIVATE pixel_twins::pixel_twins)
+
+add_test(NAME pixel_twins_sprite_asset_tests COMMAND pixel_twins_sprite_asset_tests)
+
 add_executable(pixel_twins_background_tests
     background_test.cpp
 )
 target_link_libraries(pixel_twins_background_tests PRIVATE pixel_twins::pixel_twins)
 
 add_test(NAME pixel_twins_background_tests COMMAND pixel_twins_background_tests)
+
+add_executable(pixel_twins_background_asset_tests background_asset_test.cpp)
+target_link_libraries(pixel_twins_background_asset_tests PRIVATE pixel_twins)
+target_compile_options(pixel_twins_background_asset_tests PRIVATE -Wall -Wextra -Wpedantic -Wconversion)
+add_test(NAME pixel_twins_background_asset_tests COMMAND pixel_twins_background_asset_tests)
 
 add_executable(pixel_twins_primitives_tests
     primitives_test.cpp
@@ -40,6 +52,10 @@ add_test(NAME pixel_twins_sound_tests COMMAND pixel_twins_sound_tests)
 add_executable(pixel_twins_sequencer_tests sequencer_test.cpp)
 target_link_libraries(pixel_twins_sequencer_tests PRIVATE pixel_twins::pixel_twins)
 add_test(NAME pixel_twins_sequencer_tests COMMAND pixel_twins_sequencer_tests)
+
+add_executable(pixel_twins_audio_system_tests audio_system_test.cpp)
+target_link_libraries(pixel_twins_audio_system_tests PRIVATE pixel_twins::pixel_twins)
+add_test(NAME pixel_twins_audio_system_tests COMMAND pixel_twins_audio_system_tests)
 
 add_executable(controller_test controller_test.cpp)
 target_link_libraries(controller_test PRIVATE pixel_twins::pixel_twins)

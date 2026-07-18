@@ -114,6 +114,7 @@ def render_source(
     first: int,
     fallback: int,
     outline_index: int,
+    sram: bool = False,
 ) -> str:
     glyphs = tuple(glyphs)
     entries = []
@@ -121,6 +122,7 @@ def render_source(
         rows = ", ".join(f"pixel_twins::GlyphRow{{0x{o:02x}, 0x{b:02x}}}" for o, b in glyph)
         entries.append(f"    pixel_twins::Glyph{{{{{rows}}}}}")
     body = ",\n".join(entries)
+    storage = "PIXEL_TWINS_ASSET_SRAM const" if sram else "constexpr"
     return f"""// このファイルはfont_converter.pyにより生成されました。編集しないでください。
 #include "{header_name}"
 
@@ -129,7 +131,7 @@ def render_source(
 {namespace_open(namespace)}
 namespace {{
 
-constexpr std::array<pixel_twins::Glyph, {len(glyphs)}> kGlyphs{{{{
+{storage} std::array<pixel_twins::Glyph, {len(glyphs)}> kGlyphs{{{{
 {body}
 }}}};
 
@@ -164,6 +166,7 @@ def make_parser() -> argparse.ArgumentParser:
     parser.add_argument("--outline-color", type=parse_color, default=parse_color("#111315"))
     parser.add_argument("--body-color", type=parse_color, default=parse_color("#f1ead8"))
     parser.add_argument("--outline-index", type=int, default=1)
+    parser.add_argument("--sram", action="store_true", help="グリフをRP2350のSRAMへ配置する")
     return parser
 
 
@@ -194,6 +197,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 args.first,
                 args.fallback,
                 args.outline_index,
+                args.sram,
             ),
         )
     except (OSError, ValueError) as exc:
