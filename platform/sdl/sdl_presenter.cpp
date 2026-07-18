@@ -16,7 +16,7 @@ namespace {
 
 } // namespace
 
-Presenter::Presenter(int scale) {
+Presenter::Presenter(int scale, bool vsync) {
     if (scale <= 0) {
         throw std::invalid_argument("表示倍率は1以上でなければなりません");
     }
@@ -31,6 +31,14 @@ Presenter::Presenter(int scale) {
                                      &renderer_)) {
         SDL_QuitSubSystem(SDL_INIT_VIDEO);
         throw sdlError("SDLウィンドウの作成に失敗しました");
+    }
+    if (vsync && !SDL_SetRenderVSync(renderer_, 1)) {
+        SDL_DestroyRenderer(renderer_);
+        SDL_DestroyWindow(window_);
+        renderer_ = nullptr;
+        window_ = nullptr;
+        SDL_QuitSubSystem(SDL_INIT_VIDEO);
+        throw sdlError("SDL VSyncの有効化に失敗しました");
     }
 
     texture_ = SDL_CreateTexture(renderer_,

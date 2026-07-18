@@ -9,9 +9,7 @@
 #include "pixel_twins/sprite.hpp"
 
 #include <array>
-#include <chrono>
 #include <string_view>
-#include <thread>
 
 namespace {
 
@@ -145,7 +143,7 @@ int main(int argc, char** argv) {
     drawTestPattern(framebuffer);
     framebuffer.flip();
 
-    pixel_twins::sdl::Presenter presenter;
+    pixel_twins::sdl::Presenter presenter(4, !once);
     pixel_twins::sdl::ControllerInput controllerInput;
     pixel_twins::Controllers controllers;
     do {
@@ -157,7 +155,6 @@ int main(int argc, char** argv) {
         if (once) {
             break;
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(16));
     } while (true);
     return 0;
 }

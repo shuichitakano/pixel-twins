@@ -15,7 +15,7 @@ class ControllerInput;
 
 class Presenter {
 public:
-    explicit Presenter(int scale = 4);
+    explicit Presenter(int scale = 4, bool vsync = true);
     ~Presenter();
 
     Presenter(const Presenter&) = delete;
