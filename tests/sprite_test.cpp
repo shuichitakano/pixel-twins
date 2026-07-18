@@ -37,6 +37,11 @@ void testFixedWidthAndPanelClip() {
 
     std::array<ColorIndex, 24> pattern{};
     pattern.fill(7);
+    drawSprite(left, Sprite{4, 1, 8, 1, pattern.data()});
+    check(pixelAt(buffer, 4, 1) == 7);
+    check(pixelAt(buffer, 11, 1) == 7);
+    check(pixelAt(buffer, 12, 1) == 2);
+
     drawSprite(left, Sprite{20, 1, 16, 1, pattern.data()});
     check(pixelAt(buffer, 20, 1) == 7);
     check(pixelAt(buffer, 35, 1) == 7);

@@ -103,6 +103,7 @@ void drawSprite(RenderTarget target, const Sprite& sprite) noexcept {
     }
 
     switch (sprite.sw) {
+    case 8: drawFixedWidth<8>(target, sprite); return;
     case 16: drawFixedWidth<16>(target, sprite); return;
     case 17: drawFixedWidth<17>(target, sprite); return;
     case 18: drawFixedWidth<18>(target, sprite); return;
