@@ -11,6 +11,8 @@ struct SDL_Window;
 
 namespace pixel_twins::sdl {
 
+class ControllerInput;
+
 class Presenter {
 public:
     explicit Presenter(int scale = 4);
@@ -19,7 +21,7 @@ public:
     Presenter(const Presenter&) = delete;
     Presenter& operator=(const Presenter&) = delete;
 
-    [[nodiscard]] bool processEvents() const noexcept;
+    [[nodiscard]] bool processEvents(ControllerInput* controllerInput = nullptr) const noexcept;
     void present(const Framebuffer& framebuffer);
 
 private:

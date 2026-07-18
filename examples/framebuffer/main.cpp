@@ -1,8 +1,10 @@
 #include "pixel_twins/background.hpp"
+#include "pixel_twins/controller.hpp"
 #include "pixel_twins/font.hpp"
 #include "pixel_twins/framebuffer.hpp"
 #include "pixel_twins/primitives.hpp"
 #include "pixel_twins/render_target.hpp"
+#include "pixel_twins/sdl_controller.hpp"
 #include "pixel_twins/sdl_presenter.hpp"
 #include "pixel_twins/sprite.hpp"
 
@@ -144,10 +146,13 @@ int main(int argc, char** argv) {
     framebuffer.flip();
 
     pixel_twins::sdl::Presenter presenter;
+    pixel_twins::sdl::ControllerInput controllerInput;
+    pixel_twins::Controllers controllers;
     do {
-        if (!presenter.processEvents()) {
+        if (!presenter.processEvents(&controllerInput)) {
             break;
         }
+        controllerInput.update(controllers);
         presenter.present(framebuffer);
         if (once) {
             break;

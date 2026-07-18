@@ -1,4 +1,5 @@
 #include "pixel_twins/sdl_presenter.hpp"
+#include "pixel_twins/sdl_controller.hpp"
 
 #include <SDL3/SDL.h>
 
@@ -19,7 +20,7 @@ Presenter::Presenter(int scale) {
     if (scale <= 0) {
         throw std::invalid_argument("表示倍率は1以上でなければなりません");
     }
-    if (!SDL_Init(SDL_INIT_VIDEO)) {
+    if (!SDL_InitSubSystem(SDL_INIT_VIDEO)) {
         throw sdlError("SDLの初期化に失敗しました");
     }
     if (!SDL_CreateWindowAndRenderer("Pixel Twins",
@@ -28,7 +29,7 @@ Presenter::Presenter(int scale) {
                                      0,
                                      &window_,
                                      &renderer_)) {
-        SDL_Quit();
+        SDL_QuitSubSystem(SDL_INIT_VIDEO);
         throw sdlError("SDLウィンドウの作成に失敗しました");
     }
 
@@ -40,7 +41,7 @@ Presenter::Presenter(int scale) {
     if (texture_ == nullptr) {
         SDL_DestroyRenderer(renderer_);
         SDL_DestroyWindow(window_);
-        SDL_Quit();
+        SDL_QuitSubSystem(SDL_INIT_VIDEO);
         throw sdlError("SDLテクスチャの作成に失敗しました");
     }
     SDL_SetTextureScaleMode(texture_, SDL_SCALEMODE_NEAREST);
@@ -50,15 +51,16 @@ Presenter::~Presenter() {
     SDL_DestroyTexture(texture_);
     SDL_DestroyRenderer(renderer_);
     SDL_DestroyWindow(window_);
-    SDL_Quit();
+    SDL_QuitSubSystem(SDL_INIT_VIDEO);
 }
 
-bool Presenter::processEvents() const noexcept {
+bool Presenter::processEvents(ControllerInput* controllerInput) const noexcept {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         if (event.type == SDL_EVENT_QUIT) {
             return false;
         }
+        if (controllerInput != nullptr) controllerInput->processEvent(event);
     }
     return true;
 }

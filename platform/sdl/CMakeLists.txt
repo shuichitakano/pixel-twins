@@ -1,6 +1,7 @@
 find_package(SDL3 CONFIG REQUIRED)
 
 add_library(pixel_twins_sdl
+    sdl_controller.cpp
     sdl_presenter.cpp
 )
 add_library(pixel_twins::sdl ALIAS pixel_twins_sdl)
