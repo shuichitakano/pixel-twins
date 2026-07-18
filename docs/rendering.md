@@ -42,18 +42,18 @@ struct Sprite {
     std::int16_t dy;
     std::uint8_t sw;
     std::uint8_t sh;
-    std::uint16_t next;
+    std::uint16_t _next;
     const std::uint8_t* p;
 };
 ```
 
 - `dx`, `dy`：RenderTarget上の描画先左上座標
 - `sw`, `sh`：スプライトパターンの幅と高さ
-- `next`：同一バケット内の次のスプライトのインデックス
+- `_next`：同一バケット内の次のスプライトのインデックス。Pixel Twinsが内部で管理する
 - `p`：行優先で格納された8ビットスプライトパターン
 
-`next`のリスト終端値は`0xffff`とします。インデックス0の画素は透明として書き込みを
-スキップします。
+`_next`はコンストラクタが自動的に`0xffff`で初期化します。アプリケーションから値を指定する
+必要はありません。インデックス0の画素は透明として書き込みをスキップします。
 
 アニメーション、フレーム選択、表示時間の管理は提供せず、アプリケーションの責任とします。
 
@@ -79,7 +79,7 @@ struct SpriteEx {
     std::uint8_t dh;
     std::uint8_t sw;
     std::uint8_t sh;
-    std::uint16_t next;
+    std::uint16_t _next;
     const std::uint8_t* p;
 };
 ```
@@ -87,7 +87,7 @@ struct SpriteEx {
 - `dx`, `dy`：RenderTarget上の描画先左上座標
 - `dw`, `dh`：描画後の幅と高さ
 - `sw`, `sh`：元パターンの幅と高さ
-- `next`：同一バケット内の次のスプライトのインデックス
+- `_next`：同一バケット内の次のスプライトのインデックス。Pixel Twinsが内部で管理する
 - `p`：行優先で格納された8ビットスプライトパターン
 
 左上を基準に、最近傍法で拡大縮小します。インデックス0は透明色です。

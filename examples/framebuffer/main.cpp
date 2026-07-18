@@ -43,9 +43,9 @@ void drawTestPattern(pixel_twins::Framebuffer& framebuffer) {
         static_cast<void>(putPixel(right, static_cast<std::int16_t>(panelWidth - 1 - x), y, 4));
     }
 
-    drawSprite(left, Sprite{72, 52, 16, 16, kInvalidSpriteIndex, kSpritePattern.data()});
+    drawSprite(left, Sprite{72, 52, 16, 16, kSpritePattern.data()});
     drawSpriteEx(right,
-                 SpriteEx{64, 44, 32, 32, 16, 16, kInvalidSpriteIndex, kSpritePattern.data()});
+                 SpriteEx{64, 44, 32, 32, 16, 16, kSpritePattern.data()});
 }
 
 } // namespace

@@ -18,8 +18,22 @@ struct Sprite {
     std::int16_t dy;
     std::uint8_t sw;
     std::uint8_t sh;
-    std::uint16_t next;
+    std::uint16_t _next;
     const std::uint8_t* p;
+
+    Sprite() noexcept = default;
+
+    constexpr Sprite(std::int16_t destinationX,
+                     std::int16_t destinationY,
+                     std::uint8_t sourceWidth,
+                     std::uint8_t sourceHeight,
+                     const std::uint8_t* pattern) noexcept
+        : dx(destinationX),
+          dy(destinationY),
+          sw(sourceWidth),
+          sh(sourceHeight),
+          _next(kInvalidSpriteIndex),
+          p(pattern) {}
 };
 
 struct SpriteEx {
@@ -29,8 +43,26 @@ struct SpriteEx {
     std::uint8_t dh;
     std::uint8_t sw;
     std::uint8_t sh;
-    std::uint16_t next;
+    std::uint16_t _next;
     const std::uint8_t* p;
+
+    SpriteEx() noexcept = default;
+
+    constexpr SpriteEx(std::int16_t destinationX,
+                       std::int16_t destinationY,
+                       std::uint8_t destinationWidth,
+                       std::uint8_t destinationHeight,
+                       std::uint8_t sourceWidth,
+                       std::uint8_t sourceHeight,
+                       const std::uint8_t* pattern) noexcept
+        : dx(destinationX),
+          dy(destinationY),
+          dw(destinationWidth),
+          dh(destinationHeight),
+          sw(sourceWidth),
+          sh(sourceHeight),
+          _next(kInvalidSpriteIndex),
+          p(pattern) {}
 };
 
 struct Bucket {
@@ -111,7 +143,7 @@ public:
         if (index == kInvalidSpriteIndex) {
             return index;
         }
-        sprites_[index].next = buckets_[bucketIndex].spriteTop;
+        sprites_[index]._next = buckets_[bucketIndex].spriteTop;
         buckets_[bucketIndex].spriteTop = index;
         return index;
     }
@@ -125,7 +157,7 @@ public:
         if (index == kInvalidSpriteIndex) {
             return index;
         }
-        spritesEx_[index].next = buckets_[bucketIndex].spriteExTop;
+        spritesEx_[index]._next = buckets_[bucketIndex].spriteExTop;
         buckets_[bucketIndex].spriteExTop = index;
         return index;
     }
@@ -136,14 +168,14 @@ public:
             while (spriteIndex != kInvalidSpriteIndex) {
                 const auto& sprite = sprites_[spriteIndex];
                 drawSprite(target, sprite);
-                spriteIndex = sprite.next;
+                spriteIndex = sprite._next;
             }
 
             auto spriteExIndex = bucket.spriteExTop;
             while (spriteExIndex != kInvalidSpriteIndex) {
                 const auto& sprite = spritesEx_[spriteExIndex];
                 drawSpriteEx(target, sprite);
-                spriteExIndex = sprite.next;
+                spriteExIndex = sprite._next;
             }
         }
     }

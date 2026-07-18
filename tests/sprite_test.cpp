@@ -21,7 +21,7 @@ void testGenericAndTransparent() {
     clear(target, 9);
 
     constexpr std::array<ColorIndex, 9> pattern{1, 2, 3, 4, 0, 6, 7, 8, 9};
-    drawSprite(target, Sprite{10, 4, 9, 1, kInvalidSpriteIndex, pattern.data()});
+    drawSprite(target, Sprite{10, 4, 9, 1, pattern.data()});
     check(pixelAt(buffer, 10, 4) == 1);
     check(pixelAt(buffer, 13, 4) == 4);
     check(pixelAt(buffer, 14, 4) == 9);
@@ -37,18 +37,18 @@ void testFixedWidthAndPanelClip() {
 
     std::array<ColorIndex, 24> pattern{};
     pattern.fill(7);
-    drawSprite(left, Sprite{20, 1, 16, 1, kInvalidSpriteIndex, pattern.data()});
+    drawSprite(left, Sprite{20, 1, 16, 1, pattern.data()});
     check(pixelAt(buffer, 20, 1) == 7);
     check(pixelAt(buffer, 35, 1) == 7);
     check(pixelAt(buffer, 36, 1) == 2);
 
-    drawSprite(left, Sprite{150, 2, 24, 1, kInvalidSpriteIndex, pattern.data()});
+    drawSprite(left, Sprite{150, 2, 24, 1, pattern.data()});
     check(pixelAt(buffer, 149, 2) == 2);
     check(pixelAt(buffer, 150, 2) == 7);
     check(pixelAt(buffer, 159, 2) == 7);
     check(pixelAt(buffer, 160, 2) == 3);
 
-    drawSprite(right, Sprite{-4, 3, 24, 1, kInvalidSpriteIndex, pattern.data()});
+    drawSprite(right, Sprite{-4, 3, 24, 1, pattern.data()});
     check(pixelAt(buffer, 159, 3) == 2);
     check(pixelAt(buffer, 160, 3) == 7);
     check(pixelAt(buffer, 179, 3) == 7);
@@ -61,7 +61,7 @@ void testNearestScale() {
     clear(target, 8);
 
     constexpr std::array<ColorIndex, 4> pattern{1, 2, 3, 0};
-    drawSpriteEx(target, SpriteEx{4, 5, 4, 4, 2, 2, kInvalidSpriteIndex, pattern.data()});
+    drawSpriteEx(target, SpriteEx{4, 5, 4, 4, 2, 2, pattern.data()});
     check(pixelAt(buffer, 4, 5) == 1);
     check(pixelAt(buffer, 5, 6) == 1);
     check(pixelAt(buffer, 6, 5) == 2);
@@ -70,7 +70,7 @@ void testNearestScale() {
 
     constexpr std::array<ColorIndex, 4> clippedPattern{6, 6, 6, 6};
     drawSpriteEx(target,
-                 SpriteEx{-2, -2, 4, 4, 2, 2, kInvalidSpriteIndex, clippedPattern.data()});
+                 SpriteEx{-2, -2, 4, 4, 2, 2, clippedPattern.data()});
     check(pixelAt(buffer, 0, 0) == 6);
     check(pixelAt(buffer, 2, 0) == 8);
 }
@@ -83,10 +83,10 @@ void testAllocatorAndBuckets() {
     constexpr std::array<ColorIndex, 1> first{4};
     constexpr std::array<ColorIndex, 1> second{5};
     SpriteBuckets<2, 1> buckets;
-    check(buckets.addSprite(20, Sprite{1, 1, 1, 1, 0, second.data()}) == 0);
-    check(buckets.addSprite(10, Sprite{1, 1, 1, 1, 0, first.data()}) == 1);
-    check(buckets.addSprite(10, Sprite{2, 2, 1, 1, 0, first.data()}) == kInvalidSpriteIndex);
-    check(buckets.addSprite(kBucketCount, Sprite{2, 2, 1, 1, 0, first.data()})
+    check(buckets.addSprite(20, Sprite{1, 1, 1, 1, second.data()}) == 0);
+    check(buckets.addSprite(10, Sprite{1, 1, 1, 1, first.data()}) == 1);
+    check(buckets.addSprite(10, Sprite{2, 2, 1, 1, first.data()}) == kInvalidSpriteIndex);
+    check(buckets.addSprite(kBucketCount, Sprite{2, 2, 1, 1, first.data()})
            == kInvalidSpriteIndex);
     buckets.draw(target);
     check(pixelAt(buffer, 1, 1) == 5);
