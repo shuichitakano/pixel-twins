@@ -62,7 +62,7 @@ void testPitchCurveOverridesScalarPitch() {
     }
 }
 
-void testEnvelopeIsConstantWithinBlock() {
+void testEnvelopeProgressesWithinBlock() {
     const auto twoBlocks = kAudioBlockSeconds * 2.0F;
     const Timbre timbre{&kFullWave, Envelope{twoBlocks, 0.0F, 1.0F, twoBlocks}, 1.0F, -1.0F};
     Synthesizer synth;
@@ -71,11 +71,11 @@ void testEnvelopeIsConstantWithinBlock() {
 
     synth.renderBlock(output);
     check(output[0] == 0);
-    check(output[(kAudioBlockFrames - 1) * 2] == 0);
+    check(output[(kAudioBlockFrames - 1) * 2] > 7000);
 
     synth.renderBlock(output);
     check(std::abs(static_cast<int>(output[0]) - 16383) <= 1);
-    check(output[0] == output[(kAudioBlockFrames - 1) * 2]);
+    check(output[(kAudioBlockFrames - 1) * 2] > output[0]);
 }
 
 void testSaturationAndStop() {
@@ -98,7 +98,7 @@ int main() {
     testSilenceOverwritesOutput();
     testWavePhaseAndHardPan();
     testPitchCurveOverridesScalarPitch();
-    testEnvelopeIsConstantWithinBlock();
+    testEnvelopeProgressesWithinBlock();
     testSaturationAndStop();
     return 0;
 }

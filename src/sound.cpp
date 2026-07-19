@@ -133,8 +133,11 @@ void Synthesizer::renderBlock(AudioBlock& output) noexcept {
     struct BlockVoice {
         const WaveTable* wave;
         std::uint32_t increment;
-        float left;
-        float right;
+        float frequency;
+        float pitchMultiplier;
+        float leftGain;
+        float rightGain;
+        bool scalarPitch;
         bool curvePitch;
         bool active;
     };
@@ -143,17 +146,25 @@ void Synthesizer::renderBlock(AudioBlock& output) noexcept {
     for (std::size_t i = 0; i < voices_.size(); ++i) {
         auto& voice = voices_[i];
         if (!voice.active) continue;
-        const auto envelope = envelopeLevel(voice);
-        if (!voice.active || envelope <= 0.0F) continue;
-        const auto gain = envelope * voice.velocity * std::max(0.0F, voice.timbre->volume)
-            * masterVolume_;
+        const auto gain = voice.velocity * std::max(0.0F, voice.timbre->volume) * masterVolume_;
         const auto leftPan = std::sqrt(0.5F * (1.0F - voice.pan));
         const auto rightPan = std::sqrt(0.5F * (1.0F + voice.pan));
+        const auto scalarPitch = voice.pitchCurve.frequencies == nullptr
+            && voice.pitchSeconds > 0.0F && voice.frequency > 0.0F
+            && voice.endFrequency > 0.0F && voice.frequency != voice.endFrequency;
+        const auto frequency = pitchAt(voice, voice.elapsed);
+        const auto pitchMultiplier = scalarPitch
+            ? std::pow(voice.endFrequency / voice.frequency,
+                       1.0F / (voice.pitchSeconds * static_cast<float>(kAudioSampleRate)))
+            : 1.0F;
         blockVoices[i] = BlockVoice{
             voice.timbre->wave,
-            phaseIncrement(pitchAt(voice, voice.elapsed)),
+            phaseIncrement(frequency),
+            frequency,
+            pitchMultiplier,
             gain * leftPan,
             gain * rightPan,
+            scalarPitch,
             voice.pitchCurve.frequencies != nullptr && voice.pitchCurve.count >= 2,
             true,
         };
@@ -163,24 +174,34 @@ void Synthesizer::renderBlock(AudioBlock& output) noexcept {
         float left = 0.0F;
         float right = 0.0F;
         for (std::size_t i = 0; i < voices_.size(); ++i) {
-            const auto& block = blockVoices[i];
+            auto& block = blockVoices[i];
             if (!block.active) continue;
             auto& voice = voices_[i];
-            const auto waveIndex = static_cast<std::size_t>(voice.phase >> 27U);
-            const auto sample = static_cast<float>(block.wave->samples[waveIndex]);
-            left += sample * block.left;
-            right += sample * block.right;
-            voice.phase += block.curvePitch
-                ? phaseIncrement(pitchAt(voice, voice.elapsed
-                    + static_cast<float>(frame) / static_cast<float>(kAudioSampleRate)))
-                : block.increment;
+            const auto envelope = envelopeLevel(voice);
+            if (voice.active && envelope > 0.0F) {
+                const auto waveIndex = static_cast<std::size_t>(voice.phase >> 27U);
+                const auto sample = static_cast<float>(block.wave->samples[waveIndex]);
+                left += sample * block.leftGain * envelope;
+                right += sample * block.rightGain * envelope;
+            }
+            if (voice.active) {
+                const auto increment = block.curvePitch
+                    ? phaseIncrement(pitchAt(voice, voice.elapsed))
+                    : block.scalarPitch ? phaseIncrement(block.frequency) : block.increment;
+                voice.phase += increment;
+            }
+            if (block.scalarPitch && voice.elapsed < voice.pitchSeconds) {
+                block.frequency *= block.pitchMultiplier;
+                if (voice.frequency < voice.endFrequency) {
+                    block.frequency = std::min(block.frequency, voice.endFrequency);
+                } else {
+                    block.frequency = std::max(block.frequency, voice.endFrequency);
+                }
+            }
+            if (voice.active) voice.elapsed += 1.0F / static_cast<float>(kAudioSampleRate);
         }
         output[frame * 2] = saturate16(left);
         output[frame * 2 + 1] = saturate16(right);
-    }
-
-    for (auto& voice : voices_) {
-        if (voice.active) voice.elapsed += kAudioBlockSeconds;
     }
 }
 
