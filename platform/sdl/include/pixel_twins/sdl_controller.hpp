@@ -20,14 +20,14 @@ public:
 
     void processEvent(const SDL_Event& event) noexcept;
     void update(Controllers& controllers) noexcept;
-    [[nodiscard]] std::uint8_t takeBgmVoiceToggleMask() noexcept;
+    [[nodiscard]] std::uint8_t takeBgmTrackToggleMask() noexcept;
 
 private:
     void openAvailableGamepads() noexcept;
     void removeDisconnectedGamepads() noexcept;
 
     std::array<SDL_Gamepad*, kControllerCount> gamepads_{};
-    std::uint8_t bgmVoiceToggleMask_ = 0;
+    std::uint8_t bgmTrackToggleMask_ = 0;
 };
 
 } // namespace pixel_twins::sdl

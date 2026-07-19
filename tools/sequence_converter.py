@@ -8,6 +8,8 @@ from pathlib import Path
 
 BLOCK_SECONDS = 512 / 48000
 TRACK_INSTRUMENT = {"Bass": 0, "Synth": 1, "Lead": 2, "LeadDelay": 3, "Keyboard": 4}
+TRACK_ID = {"Bass": 0, "Drums": 1, "Percussion": 2, "Synth": 3,
+            "Lead": 4, "LeadDelay": 5, "Keyboard": 6}
 
 
 def instrument(track, note):
@@ -25,7 +27,7 @@ def convert(path):
             block = round(event["tick"] * seconds_per_tick / BLOCK_SECONDS)
             duration = max(1, round(event["duration"] * seconds_per_tick / BLOCK_SECONDS))
             events.append((block, duration, event["note"], event["velocity"], event["voice"],
-                           instrument(track["name"], event["note"])))
+                           instrument(track["name"], event["note"]), TRACK_ID[track["name"]]))
     events.sort(key=lambda value: value[0])
     end_block = max(1, round(data["endTick"] * seconds_per_tick / BLOCK_SECONDS))
     loop = data.get("playMode") != "oneshot" and data.get("loopStartTick") is not None
@@ -56,7 +58,7 @@ def main():
     header = f'''// sequence_converter.pyによる生成物。編集しないでください。\n#pragma once\n\n#include "pixel_twins/sequencer.hpp"\n\n{openings}\n\nextern const pixel_twins::SequenceInstrument kBgmInstruments[12];\n{declarations}\n\n{closings}\n'''
     definitions = []
     for key, (_, events, end, loop_start, loop_index, loop) in converted:
-        rows = ",\n".join(f"    {{{b}, {d}, {n}, {v}, {voice}, {inst}}}" for b, d, n, v, voice, inst in events)
+        rows = ",\n".join(f"    {{{b}, {d}, {n}, {v}, {voice}, {inst}, {track}}}" for b, d, n, v, voice, inst, track in events)
         definitions.append(f'''namespace {{\nconstexpr pixel_twins::SequenceEvent k{key}Events[]{{\n{rows}\n}};\n}}\nconst pixel_twins::Sequence k{key}{{k{key}Events, {len(events)}, kBgmInstruments, 12, {end}, {loop_start}, {loop_index}, {str(loop).lower()}}};''')
     source = f'''// sequence_converter.pyによる生成物。編集しないでください。\n#include "bgm_data.hpp"\n\n{openings}\n\n{chr(10).join(definitions)}\n\n{closings}\n'''
     args.header.parent.mkdir(parents=True, exist_ok=True)

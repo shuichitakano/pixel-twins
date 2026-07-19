@@ -20,7 +20,7 @@ public:
     [[nodiscard]] bool stopBgm() noexcept;
     [[nodiscard]] bool stopAll() noexcept;
     [[nodiscard]] bool setMasterVolume(float volume) noexcept;
-    [[nodiscard]] bool setBgmVoiceMuteMask(std::uint8_t mask) noexcept;
+    [[nodiscard]] bool setBgmTrackMuteMask(std::uint8_t mask) noexcept;
     [[nodiscard]] bool healthy() const noexcept { return healthy_.load(std::memory_order_relaxed); }
 
 private:

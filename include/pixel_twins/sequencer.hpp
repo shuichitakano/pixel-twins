@@ -2,10 +2,14 @@
 
 #include "pixel_twins/sound.hpp"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 
 namespace pixel_twins {
+
+inline constexpr std::size_t kBgmTrackCount = 8;
+inline constexpr std::uint8_t kInvalidBgmTrack = 0xff;
 
 struct SequenceInstrument {
     Timbre timbre;
@@ -22,6 +26,7 @@ struct SequenceEvent {
     std::uint8_t velocity;
     std::uint8_t voice;
     std::uint8_t instrument;
+    std::uint8_t track;
 };
 
 static_assert(sizeof(SequenceEvent) == 12, "シーケンスイベントは12バイトでなければなりません");
@@ -42,11 +47,11 @@ public:
     void play(const Sequence& sequence, Synthesizer& synthesizer) noexcept;
     void stop(Synthesizer& synthesizer) noexcept;
     void advanceBlock(Synthesizer& synthesizer) noexcept;
-    void setVoiceMuteMask(std::uint8_t mask, Synthesizer& synthesizer) noexcept;
+    void setTrackMuteMask(std::uint8_t mask, Synthesizer& synthesizer) noexcept;
 
     [[nodiscard]] bool isPlaying() const noexcept { return playing_; }
     [[nodiscard]] std::uint32_t blockPosition() const noexcept { return blockPosition_; }
-    [[nodiscard]] std::uint8_t voiceMuteMask() const noexcept { return voiceMuteMask_; }
+    [[nodiscard]] std::uint8_t trackMuteMask() const noexcept { return trackMuteMask_; }
 
 private:
     [[nodiscard]] static float eventFrequency(const SequenceInstrument& instrument,
@@ -55,7 +60,8 @@ private:
     const Sequence* sequence_ = nullptr;
     std::uint32_t blockPosition_ = 0;
     std::uint32_t eventIndex_ = 0;
-    std::uint8_t voiceMuteMask_ = 0;
+    std::array<std::uint8_t, kBgmVoiceCount> voiceTracks_{};
+    std::uint8_t trackMuteMask_ = 0;
     bool playing_ = false;
     bool finishPending_ = false;
 };

@@ -64,9 +64,9 @@ bool AudioPlayer::setMasterVolume(float volume) noexcept {
     return true;
 }
 
-bool AudioPlayer::setBgmVoiceMuteMask(std::uint8_t mask) noexcept {
+bool AudioPlayer::setBgmTrackMuteMask(std::uint8_t mask) noexcept {
     if (!lock()) return false;
-    audioSystem_.setBgmVoiceMuteMask(mask);
+    audioSystem_.setBgmTrackMuteMask(mask);
     unlock();
     return true;
 }

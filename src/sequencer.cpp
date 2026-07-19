@@ -14,12 +14,14 @@ void Sequencer::play(const Sequence& sequence, Synthesizer& synthesizer) noexcep
     sequence_ = &sequence;
     blockPosition_ = 0;
     eventIndex_ = 0;
+    voiceTracks_.fill(kInvalidBgmTrack);
     playing_ = true;
     finishPending_ = false;
 }
 
 void Sequencer::stop(Synthesizer& synthesizer) noexcept {
     for (std::size_t voice = 0; voice < kBgmVoiceCount; ++voice) synthesizer.stopVoice(voice);
+    voiceTracks_.fill(kInvalidBgmTrack);
     sequence_ = nullptr;
     blockPosition_ = 0;
     eventIndex_ = 0;
@@ -27,11 +29,15 @@ void Sequencer::stop(Synthesizer& synthesizer) noexcept {
     finishPending_ = false;
 }
 
-void Sequencer::setVoiceMuteMask(std::uint8_t mask, Synthesizer& synthesizer) noexcept {
-    const auto newlyMuted = static_cast<std::uint8_t>(mask & ~voiceMuteMask_);
-    voiceMuteMask_ = mask;
+void Sequencer::setTrackMuteMask(std::uint8_t mask, Synthesizer& synthesizer) noexcept {
+    const auto newlyMuted = static_cast<std::uint8_t>(mask & ~trackMuteMask_);
+    trackMuteMask_ = mask;
     for (std::size_t voice = 0; voice < kBgmVoiceCount; ++voice) {
-        if ((newlyMuted & (1U << voice)) != 0U) synthesizer.stopVoice(voice);
+        const auto track = voiceTracks_[voice];
+        if (track < kBgmTrackCount && (newlyMuted & (1U << track)) != 0U) {
+            synthesizer.stopVoice(voice);
+            voiceTracks_[voice] = kInvalidBgmTrack;
+        }
     }
 }
 
@@ -47,7 +53,7 @@ void Sequencer::advanceBlock(Synthesizer& synthesizer) noexcept {
         ++eventIndex_;
         if (event.block != blockPosition_ || event.voice >= kBgmVoiceCount
             || event.instrument >= sequence_->instrumentCount
-            || (voiceMuteMask_ & (1U << event.voice)) != 0U) {
+            || (event.track < kBgmTrackCount && (trackMuteMask_ & (1U << event.track)) != 0U)) {
             continue;
         }
         const auto& instrument = sequence_->instruments[event.instrument];
@@ -63,6 +69,7 @@ void Sequencer::advanceBlock(Synthesizer& synthesizer) noexcept {
                            * kAudioBlockSeconds,
                        velocity,
                        0.0F});
+        voiceTracks_[event.voice] = event.track;
     }
 
     ++blockPosition_;

@@ -61,12 +61,12 @@ public:
     void stopBgm() noexcept;
     void stopAll() noexcept;
     void setMasterVolume(float volume) noexcept;
-    void setBgmVoiceMuteMask(std::uint8_t mask) noexcept;
+    void setBgmTrackMuteMask(std::uint8_t mask) noexcept;
     void renderBlock(AudioBlock& output) noexcept PIXEL_TWINS_SRAM;
 
     [[nodiscard]] bool isBgmPlaying() const noexcept { return sequencer_.isPlaying(); }
-    [[nodiscard]] std::uint8_t bgmVoiceMuteMask() const noexcept {
-        return sequencer_.voiceMuteMask();
+    [[nodiscard]] std::uint8_t bgmTrackMuteMask() const noexcept {
+        return sequencer_.trackMuteMask();
     }
     [[nodiscard]] Synthesizer& synthesizer() noexcept { return synthesizer_; }
     [[nodiscard]] const Synthesizer& synthesizer() const noexcept { return synthesizer_; }

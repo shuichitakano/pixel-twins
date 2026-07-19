@@ -30,8 +30,8 @@ void testSequenceAndLoop() {
                            0.0F},
     }};
     const std::array<SequenceEvent, 2> events{{
-        SequenceEvent{0, 1, 60, 127, 0, 0},
-        SequenceEvent{1, 1, 60, 127, 0, 0},
+        SequenceEvent{0, 1, 60, 127, 0, 0, 0},
+        SequenceEvent{1, 1, 60, 127, 0, 0, 0},
     }};
     const Sequence sequence{events.data(),
                             static_cast<std::uint32_t>(events.size()),
@@ -67,7 +67,7 @@ void testOneShotStops() {
     const std::array<SequenceInstrument, 1> instruments{{
         SequenceInstrument{Timbre{&kStandardWaves.sine}, 1.0F, 0.0F, 1.0F, 0.0F},
     }};
-    const std::array<SequenceEvent, 1> events{{SequenceEvent{0, 1, 69, 127, 0, 0}}};
+    const std::array<SequenceEvent, 1> events{{SequenceEvent{0, 1, 69, 127, 0, 0, 0}}};
     const Sequence sequence{events.data(), 1, instruments.data(), 1, 1, 0, 0, false};
     Synthesizer synth;
     Sequencer sequencer;
@@ -82,33 +82,33 @@ void testOneShotStops() {
     check(!synth.isVoiceActive(0));
 }
 
-void testVoiceMuteMask() {
+void testTrackMuteMask() {
     const std::array<SequenceInstrument, 1> instruments{{
         SequenceInstrument{Timbre{&kStandardWaves.square,
                                   Envelope{0.0F, 0.0F, 1.0F, 0.0F}, 1.0F, -1.0F},
                            1.0F, 1500.0F, 1.0F, 0.0F},
     }};
     const std::array<SequenceEvent, 2> events{{
-        SequenceEvent{0, 2, 60, 127, 0, 0},
-        SequenceEvent{1, 2, 60, 127, 0, 0},
+        SequenceEvent{0, 2, 60, 127, 0, 0, 0},
+        SequenceEvent{1, 2, 60, 127, 0, 0, 1},
     }};
     const Sequence sequence{events.data(), 2, instruments.data(), 1, 3, 0, 0, false};
     Synthesizer synth;
     Sequencer sequencer;
     AudioBlock output{};
 
-    sequencer.setVoiceMuteMask(1U, synth);
+    sequencer.setTrackMuteMask(1U << 0U, synth);
     sequencer.play(sequence, synth);
     sequencer.advanceBlock(synth);
     synth.renderBlock(output);
     check(output[0] == 0);
 
-    sequencer.setVoiceMuteMask(0U, synth);
+    sequencer.setTrackMuteMask(0U, synth);
     sequencer.advanceBlock(synth);
     synth.renderBlock(output);
     check(output[0] == 28835);
 
-    sequencer.setVoiceMuteMask(1U, synth);
+    sequencer.setTrackMuteMask(1U << 1U, synth);
     check(!synth.isVoiceActive(0));
 }
 
@@ -118,6 +118,6 @@ int main() {
     testStandardWaves();
     testSequenceAndLoop();
     testOneShotStops();
-    testVoiceMuteMask();
+    testTrackMuteMask();
     return 0;
 }
