@@ -77,17 +77,20 @@ private:
         float pitchSeconds = 0.0F;
         float gateSeconds = 0.0F;
         float elapsed = 0.0F;
+        float envelopeElapsed = 0.0F;
         float velocity = 0.0F;
         float pan = 0.0F;
         float releaseStart = 0.0F;
         float releaseLevel = 0.0F;
         PitchCurve pitchCurve{};
         float pitchCurveScale = 1.0F;
+        bool envelopeStarted = false;
         bool releasing = false;
         bool active = false;
     };
 
     [[nodiscard]] static float envelopeBeforeRelease(const Voice& voice, float time) noexcept;
+    static void advanceEnvelope(Voice& voice) noexcept;
     [[nodiscard]] static float envelopeLevel(Voice& voice) noexcept;
     [[nodiscard]] static float pitchAt(const Voice& voice, float time) noexcept;
 

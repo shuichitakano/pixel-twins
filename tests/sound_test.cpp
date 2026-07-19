@@ -62,20 +62,19 @@ void testPitchCurveOverridesScalarPitch() {
     }
 }
 
-void testEnvelopeProgressesWithinBlock() {
-    const auto twoBlocks = kAudioBlockSeconds * 2.0F;
-    const Timbre timbre{&kFullWave, Envelope{twoBlocks, 0.0F, 1.0F, twoBlocks}, 1.0F, -1.0F};
+void testEnvelopeBreakpointsAreNotSkipped() {
+    const Timbre timbre{&kFullWave, Envelope{0.001F, 0.001F, 0.25F, 0.001F}, 1.0F, -1.0F};
     Synthesizer synth;
-    synth.startVoice(0, VoiceStart{&timbre, 440.0F, 440.0F, 0.0F, twoBlocks, 1.0F, 0.0F});
+    synth.startVoice(0, VoiceStart{&timbre, 440.0F, 440.0F, 0.0F, 1.0F, 1.0F, 0.0F});
     AudioBlock output{};
 
     synth.renderBlock(output);
-    check(output[0] == 0);
-    check(output[(kAudioBlockFrames - 1) * 2] > 7000);
+    check(output[0] == 32767);
+    check(output[0] == output[(kAudioBlockFrames - 1) * 2]);
 
     synth.renderBlock(output);
-    check(std::abs(static_cast<int>(output[0]) - 16383) <= 1);
-    check(output[(kAudioBlockFrames - 1) * 2] > output[0]);
+    check(std::abs(static_cast<int>(output[0]) - 8191) <= 1);
+    check(output[0] == output[(kAudioBlockFrames - 1) * 2]);
 }
 
 void testSaturationAndStop() {
@@ -98,7 +97,7 @@ int main() {
     testSilenceOverwritesOutput();
     testWavePhaseAndHardPan();
     testPitchCurveOverridesScalarPitch();
-    testEnvelopeProgressesWithinBlock();
+    testEnvelopeBreakpointsAreNotSkipped();
     testSaturationAndStop();
     return 0;
 }
