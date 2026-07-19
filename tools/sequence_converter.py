@@ -13,7 +13,7 @@ TRACK_INSTRUMENT = {"Bass": 0, "Synth": 1, "Lead": 2, "LeadDelay": 3, "Keyboard"
 def instrument(track, note):
     if track not in ("Drums", "Percussion"):
         return TRACK_INSTRUMENT[track]
-    return {36: 5, 38: 6, 42: 7, 46: 7}.get(note, 8)
+    return {36: 5, 38: 6, 42: 7, 46: 8, 45: 9, 50: 10}.get(note, 11)
 
 
 def convert(path):
@@ -53,11 +53,11 @@ def main():
     openings = "\n".join(f"namespace {part} {{" for part in args.namespace.split("::"))
     closings = "\n".join(f"}} // namespace {part}" for part in reversed(args.namespace.split("::")))
     declarations = "\n".join(f"extern const pixel_twins::Sequence k{key};" for key, _ in converted)
-    header = f'''// sequence_converter.pyによる生成物。編集しないでください。\n#pragma once\n\n#include "pixel_twins/sequencer.hpp"\n\n{openings}\n\nextern const pixel_twins::SequenceInstrument kBgmInstruments[9];\n{declarations}\n\n{closings}\n'''
+    header = f'''// sequence_converter.pyによる生成物。編集しないでください。\n#pragma once\n\n#include "pixel_twins/sequencer.hpp"\n\n{openings}\n\nextern const pixel_twins::SequenceInstrument kBgmInstruments[12];\n{declarations}\n\n{closings}\n'''
     definitions = []
     for key, (_, events, end, loop_start, loop_index, loop) in converted:
         rows = ",\n".join(f"    {{{b}, {d}, {n}, {v}, {voice}, {inst}}}" for b, d, n, v, voice, inst in events)
-        definitions.append(f'''namespace {{\nconstexpr pixel_twins::SequenceEvent k{key}Events[]{{\n{rows}\n}};\n}}\nconst pixel_twins::Sequence k{key}{{k{key}Events, {len(events)}, kBgmInstruments, 9, {end}, {loop_start}, {loop_index}, {str(loop).lower()}}};''')
+        definitions.append(f'''namespace {{\nconstexpr pixel_twins::SequenceEvent k{key}Events[]{{\n{rows}\n}};\n}}\nconst pixel_twins::Sequence k{key}{{k{key}Events, {len(events)}, kBgmInstruments, 12, {end}, {loop_start}, {loop_index}, {str(loop).lower()}}};''')
     source = f'''// sequence_converter.pyによる生成物。編集しないでください。\n#include "bgm_data.hpp"\n\n{openings}\n\n{chr(10).join(definitions)}\n\n{closings}\n'''
     args.header.parent.mkdir(parents=True, exist_ok=True)
     args.source.parent.mkdir(parents=True, exist_ok=True)
