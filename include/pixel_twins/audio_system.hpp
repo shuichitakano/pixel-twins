@@ -25,6 +25,7 @@ struct SfxPreset {
     float holdSeconds = 0.0F;
     float velocity = 1.0F;
     std::uint8_t priority = 0;
+    PitchCurve pitchCurve{};
 };
 
 [[nodiscard]] inline SfxRequest makeSfxRequest(const SfxPreset& preset,
@@ -35,7 +36,9 @@ struct SfxPreset {
              preset.pitchSeconds,
              preset.holdSeconds,
              preset.velocity,
-             pan},
+             pan,
+             preset.pitchCurve,
+             1.0F},
             preset.priority};
 }
 

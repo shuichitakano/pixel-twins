@@ -48,6 +48,20 @@ void testWavePhaseAndHardPan() {
     }
 }
 
+void testPitchCurveOverridesScalarPitch() {
+    constexpr std::array<float, 2> curve{{1500.0F, 1500.0F}};
+    const Timbre timbre{&kRampWave, Envelope{0.0F, 0.0F, 1.0F, 0.1F}, 1.0F, -1.0F};
+    Synthesizer synth;
+    synth.startVoice(0, VoiceStart{&timbre, 0.0F, 0.0F, 0.1F, 1.0F, 1.0F, 0.0F,
+                                   PitchCurve{curve.data(), 2}, 1.0F});
+    AudioBlock output{};
+    synth.renderBlock(output);
+    for (std::size_t i = 0; i < kWaveTableSize; ++i) {
+        check(output[i * 2] == static_cast<std::int16_t>(i * 1000));
+        check(output[i * 2 + 1] == 0);
+    }
+}
+
 void testEnvelopeIsConstantWithinBlock() {
     const auto twoBlocks = kAudioBlockSeconds * 2.0F;
     const Timbre timbre{&kFullWave, Envelope{twoBlocks, 0.0F, 1.0F, twoBlocks}, 1.0F, -1.0F};
@@ -83,6 +97,7 @@ void testSaturationAndStop() {
 int main() {
     testSilenceOverwritesOutput();
     testWavePhaseAndHardPan();
+    testPitchCurveOverridesScalarPitch();
     testEnvelopeIsConstantWithinBlock();
     testSaturationAndStop();
     return 0;

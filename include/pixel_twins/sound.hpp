@@ -38,6 +38,11 @@ struct Timbre {
     float pan = 0.0F;
 };
 
+struct PitchCurve {
+    const float* frequencies = nullptr;
+    std::uint8_t count = 0;
+};
+
 struct VoiceStart {
     const Timbre* timbre = nullptr;
     float frequency = 440.0F;
@@ -46,6 +51,8 @@ struct VoiceStart {
     float holdSeconds = 0.0F;
     float velocity = 1.0F;
     float pan = 0.0F;
+    PitchCurve pitchCurve{};
+    float pitchCurveScale = 1.0F;
 };
 
 class Synthesizer {
@@ -74,13 +81,15 @@ private:
         float pan = 0.0F;
         float releaseStart = 0.0F;
         float releaseLevel = 0.0F;
+        PitchCurve pitchCurve{};
+        float pitchCurveScale = 1.0F;
         bool releasing = false;
         bool active = false;
     };
 
     [[nodiscard]] static float envelopeBeforeRelease(const Voice& voice, float time) noexcept;
     [[nodiscard]] static float envelopeLevel(Voice& voice) noexcept;
-    [[nodiscard]] static float pitchAt(const Voice& voice) noexcept;
+    [[nodiscard]] static float pitchAt(const Voice& voice, float time) noexcept;
 
     std::array<Voice, kAudioVoiceCount> voices_{};
     float masterVolume_ = 1.0F;

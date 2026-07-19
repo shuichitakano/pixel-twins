@@ -31,19 +31,42 @@ def main():
     for preset in presets:
         name = ident(preset["name"])
         wave = preset["wave"]
-        if wave not in WAVES:
+        samples = preset.get("samples")
+        if samples is not None and len(samples) != 32:
+            raise ValueError(f"カスタム波形は32要素でなければなりません: {preset['name']}")
+        if samples is None and wave not in WAVES:
             raise ValueError(f"不明な波形です: {wave}")
+        if samples is not None:
+            converted = [round(max(-1.0, min(1.0, float(value))) * 32767) for value in samples]
+            definitions.append(
+                f"namespace {{ const pixel_twins::WaveTable k{name}Wave{{{{"
+                + ", ".join(str(value) for value in converted)
+                + "}}; }")
+            wave_ref = f"k{name}Wave"
+        else:
+            wave_ref = f"pixel_twins::kStandardWaves.{wave}"
+        pitch_curve = preset.get("pitchCurve")
+        if pitch_curve is not None and len(pitch_curve) < 2:
+            raise ValueError(f"ピッチカーブは2要素以上でなければなりません: {preset['name']}")
+        if pitch_curve is not None:
+            definitions.append(
+                f"namespace {{ constexpr float k{name}PitchCurve[]{{"
+                + ", ".join(f"{float(value)}F" for value in pitch_curve)
+                + "}; }")
+            curve = f"{{k{name}PitchCurve, {len(pitch_curve)}}}"
+        else:
+            curve = "{}"
         env = preset.get("envelope", {})
         f = lambda key, default: float(preset.get(key, default))
         definitions.append(
             f"const pixel_twins::SfxPreset k{name}{{"
-            f"{{&pixel_twins::kStandardWaves.{wave}, "
+            f"{{&{wave_ref}, "
             f"{{{float(env.get('attack', 0))}F, {float(env.get('decay', 0))}F, "
             f"{float(env.get('sustain', 1))}F, {float(env.get('release', 0))}F}}, "
             f"{f('volume', 1)}F, {f('pan', 0)}F}}, "
             f"{f('frequency', 440)}F, {f('endFrequency', preset.get('frequency', 440))}F, "
             f"{f('pitchSeconds', 0)}F, {f('holdSeconds', 0)}F, {f('velocity', 1)}F, "
-            f"{int(preset.get('priority', 0))}}};")
+            f"{int(preset.get('priority', 0))}, {curve}}};")
         declarations.append(f"extern const pixel_twins::SfxPreset k{name};")
     header = "// sfx_converter.pyによる生成物。編集しないでください。\n#pragma once\n\n#include \"pixel_twins/audio_system.hpp\"\n\n" + openings + "\n\n" + "\n".join(declarations) + "\n\n" + closings + "\n"
     source = "// sfx_converter.pyによる生成物。編集しないでください。\n#include \"sfx_data.hpp\"\n#include \"pixel_twins/sound_waves.hpp\"\n\n" + openings + "\n\n" + "\n".join(definitions) + "\n\n" + closings + "\n"
