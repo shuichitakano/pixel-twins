@@ -14,15 +14,66 @@ inline constexpr std::size_t kAudioChannels = 2;
 inline constexpr std::size_t kAudioVoiceCount = 16;
 inline constexpr std::size_t kBgmVoiceCount = 8;
 inline constexpr std::size_t kSfxVoiceCount = 8;
-inline constexpr std::size_t kWaveTableSize = 32;
+inline constexpr std::size_t kWaveTableSourceSize = 32;
+inline constexpr std::size_t kWaveTableSize = 256;
+inline constexpr std::size_t kWaveTableExpansion = kWaveTableSize / kWaveTableSourceSize;
 inline constexpr float kAudioBlockSeconds =
     static_cast<float>(kAudioBlockFrames) / static_cast<float>(kAudioSampleRate);
 
 using AudioBlock = std::array<std::int16_t, kAudioBlockFrames * kAudioChannels>;
 
+using WaveTableSource = std::array<std::int16_t, kWaveTableSourceSize>;
+
 struct WaveTable {
-    std::array<std::int16_t, kWaveTableSize> samples;
+    std::array<std::int16_t, kWaveTableSize> samples{};
+
+    constexpr WaveTable() = default;
+
+    constexpr explicit WaveTable(const WaveTableSource& source) {
+        for (std::size_t i = 0; i < kWaveTableSize; ++i) {
+            const auto sourceIndex = i / kWaveTableExpansion;
+            const auto fraction = i % kWaveTableExpansion;
+            const auto nextIndex = (sourceIndex + 1U) % kWaveTableSourceSize;
+            const auto current = static_cast<std::int32_t>(source[sourceIndex]);
+            const auto next = static_cast<std::int32_t>(source[nextIndex]);
+            samples[i] = static_cast<std::int16_t>(
+                (current * static_cast<std::int32_t>(kWaveTableExpansion - fraction)
+                 + next * static_cast<std::int32_t>(fraction))
+                / static_cast<std::int32_t>(kWaveTableExpansion));
+        }
+    }
 };
+
+[[nodiscard]] constexpr WaveTable makeNoiseWave(const WaveTableSource& source,
+                                                std::uint32_t seed) noexcept {
+    WaveTable result{source};
+    auto random = seed != 0U ? seed : 1U;
+    for (std::size_t i = 0; i < kWaveTableSize; ++i) {
+        const auto fraction = i % kWaveTableExpansion;
+        if (fraction == 0U) continue;
+        random ^= random << 13U;
+        random ^= random >> 17U;
+        random ^= random << 5U;
+        const auto sourceIndex = i / kWaveTableExpansion;
+        const auto nextIndex = (sourceIndex + 1U) % kWaveTableSourceSize;
+        const auto current = static_cast<std::int32_t>(source[sourceIndex]);
+        const auto next = static_cast<std::int32_t>(source[nextIndex]);
+        const auto difference = next >= current ? next - current : current - next;
+        const auto amplitude = 2048 + difference / 5;
+        const auto distanceToAnchor = fraction <= kWaveTableExpansion / 2U
+            ? fraction
+            : kWaveTableExpansion - fraction;
+        const auto noise = static_cast<std::int32_t>((random >> 16U) & 0xffffU) - 32768;
+        const auto jitter = static_cast<std::int32_t>(
+            static_cast<std::int64_t>(noise) * amplitude
+            * static_cast<std::int32_t>(distanceToAnchor)
+            / (32768 * static_cast<std::int32_t>(kWaveTableExpansion / 2U)));
+        const auto value = static_cast<std::int32_t>(result.samples[i]) + jitter;
+        result.samples[i] = static_cast<std::int16_t>(
+            value < -32768 ? -32768 : (value > 32767 ? 32767 : value));
+    }
+    return result;
+}
 
 struct Envelope {
     float attack = 0.0F;
@@ -98,6 +149,8 @@ private:
     float masterVolume_ = 1.0F;
 };
 
-static_assert(sizeof(WaveTable) == 64, "32要素の16bit波形は64バイトでなければなりません");
+static_assert(kWaveTableSize % kWaveTableSourceSize == 0,
+              "波形テーブルの展開倍率は整数でなければなりません");
+static_assert(sizeof(WaveTable) == 512, "256要素の16bit波形は512バイトでなければなりません");
 
 } // namespace pixel_twins

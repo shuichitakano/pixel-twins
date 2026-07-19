@@ -12,10 +12,10 @@ using namespace pixel_twins;
 
 void testStandardWaves() {
     check(kStandardWaves.sine.samples[0] == 0);
-    check(kStandardWaves.sine.samples[8] == 32767);
-    check(kStandardWaves.square.samples[15] == 28835);
-    check(kStandardWaves.square.samples[16] == -28835);
-    check(sizeof(kStandardWaves) == 576);
+    check(kStandardWaves.sine.samples[8 * kWaveTableExpansion] == 32767);
+    check(kStandardWaves.square.samples[15 * kWaveTableExpansion] == 28835);
+    check(kStandardWaves.square.samples[16 * kWaveTableExpansion] == -28835);
+    check(sizeof(kStandardWaves) == 4608);
 }
 
 void testSequenceAndLoop() {

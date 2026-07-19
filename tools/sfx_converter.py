@@ -15,6 +15,13 @@ def ident(name):
     return value
 
 
+def stable_seed(name):
+    value = 2166136261
+    for byte in name.encode("utf-8"):
+        value = ((value ^ byte) * 16777619) & 0xFFFFFFFF
+    return value or 1
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("input", type=Path)
@@ -38,10 +45,16 @@ def main():
             raise ValueError(f"不明な波形です: {wave}")
         if samples is not None:
             converted = [round(max(-1.0, min(1.0, float(value))) * 32767) for value in samples]
+            values = ", ".join(str(value) for value in converted)
+            if wave == "noise":
+                initializer = (
+                    f"pixel_twins::makeNoiseWave(pixel_twins::WaveTableSource{{{{{values}}}}}, "
+                    f"0x{stable_seed(preset['name']):08x}U)")
+            else:
+                initializer = f"pixel_twins::WaveTable{{{{{values}}}}}"
             definitions.append(
-                f"namespace {{ const pixel_twins::WaveTable k{name}Wave{{{{"
-                + ", ".join(str(value) for value in converted)
-                + "}}; }")
+                f"namespace {{ PIXEL_TWINS_ASSET_SRAM const pixel_twins::WaveTable "
+                f"k{name}Wave = {initializer}; }}")
             wave_ref = f"k{name}Wave"
         else:
             wave_ref = f"pixel_twins::kStandardWaves.{wave}"

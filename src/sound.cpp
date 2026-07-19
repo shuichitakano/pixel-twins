@@ -187,7 +187,7 @@ void Synthesizer::renderBlock(AudioBlock& output) noexcept {
             const auto& block = blockVoices[i];
             if (!block.active) continue;
             auto& voice = voices_[i];
-            const auto waveIndex = static_cast<std::size_t>(voice.phase >> 27U);
+            const auto waveIndex = static_cast<std::size_t>(voice.phase >> 24U);
             const auto sample = static_cast<float>(block.wave->samples[waveIndex]);
             left += sample * block.left;
             right += sample * block.right;
