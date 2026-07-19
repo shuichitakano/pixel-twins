@@ -73,6 +73,10 @@ bool Presenter::processEvents(ControllerInput* controllerInput) const noexcept {
     return true;
 }
 
+void Presenter::setTitle(const char* title) noexcept {
+    (void)SDL_SetWindowTitle(window_, title);
+}
+
 void Presenter::present(const Framebuffer& framebuffer) {
     const auto& source = framebuffer.displayBuffer();
     const auto& palette = framebuffer.palette();

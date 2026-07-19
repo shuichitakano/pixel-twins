@@ -49,6 +49,10 @@ void AudioSystem::setMasterVolume(float volume) noexcept {
     synthesizer_.setMasterVolume(volume);
 }
 
+void AudioSystem::setBgmVoiceMuteMask(std::uint8_t mask) noexcept {
+    sequencer_.setVoiceMuteMask(mask, synthesizer_);
+}
+
 void AudioSystem::renderBlock(AudioBlock& output) noexcept {
     SfxRequest request;
     while (sfxRequests_.tryPop(request)) startSfx(request);

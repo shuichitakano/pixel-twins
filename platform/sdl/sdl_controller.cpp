@@ -112,6 +112,17 @@ ControllerInput::~ControllerInput() {
 void ControllerInput::processEvent(const SDL_Event& event) noexcept {
     if (event.type == SDL_EVENT_GAMEPAD_ADDED) openAvailableGamepads();
     if (event.type == SDL_EVENT_GAMEPAD_REMOVED) removeDisconnectedGamepads();
+    if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat
+        && event.key.scancode >= SDL_SCANCODE_F1 && event.key.scancode <= SDL_SCANCODE_F8) {
+        const auto voice = static_cast<unsigned>(event.key.scancode - SDL_SCANCODE_F1);
+        bgmVoiceToggleMask_ = static_cast<std::uint8_t>(bgmVoiceToggleMask_ | (1U << voice));
+    }
+}
+
+std::uint8_t ControllerInput::takeBgmVoiceToggleMask() noexcept {
+    const auto result = bgmVoiceToggleMask_;
+    bgmVoiceToggleMask_ = 0;
+    return result;
 }
 
 void ControllerInput::update(Controllers& controllers) noexcept {

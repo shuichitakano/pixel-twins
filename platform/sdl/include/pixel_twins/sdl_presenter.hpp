@@ -22,6 +22,7 @@ public:
     Presenter& operator=(const Presenter&) = delete;
 
     [[nodiscard]] bool processEvents(ControllerInput* controllerInput = nullptr) const noexcept;
+    void setTitle(const char* title) noexcept;
     void present(const Framebuffer& framebuffer);
 
 private:

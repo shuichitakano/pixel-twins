@@ -27,6 +27,14 @@ void Sequencer::stop(Synthesizer& synthesizer) noexcept {
     finishPending_ = false;
 }
 
+void Sequencer::setVoiceMuteMask(std::uint8_t mask, Synthesizer& synthesizer) noexcept {
+    const auto newlyMuted = static_cast<std::uint8_t>(mask & ~voiceMuteMask_);
+    voiceMuteMask_ = mask;
+    for (std::size_t voice = 0; voice < kBgmVoiceCount; ++voice) {
+        if ((newlyMuted & (1U << voice)) != 0U) synthesizer.stopVoice(voice);
+    }
+}
+
 void Sequencer::advanceBlock(Synthesizer& synthesizer) noexcept {
     if (!playing_) return;
     if (finishPending_) {
@@ -38,7 +46,8 @@ void Sequencer::advanceBlock(Synthesizer& synthesizer) noexcept {
         if (event.block > blockPosition_) break;
         ++eventIndex_;
         if (event.block != blockPosition_ || event.voice >= kBgmVoiceCount
-            || event.instrument >= sequence_->instrumentCount) {
+            || event.instrument >= sequence_->instrumentCount
+            || (voiceMuteMask_ & (1U << event.voice)) != 0U) {
             continue;
         }
         const auto& instrument = sequence_->instruments[event.instrument];
