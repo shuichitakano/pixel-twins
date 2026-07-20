@@ -106,16 +106,29 @@ struct VoiceStart {
     float pitchCurveScale = 1.0F;
 };
 
+struct NoiseStart {
+    VoiceStart voice{};
+    std::uint8_t priority = 0;
+    float bodyVolume = 0.0F;
+    float bodyFrequency = 0.0F;
+    float bodyEndFrequency = 0.0F;
+    float bodyPitchSeconds = 0.0F;
+    float bodySeconds = 0.0F;
+};
+
 class Synthesizer {
 public:
     void startVoice(std::size_t voice, const VoiceStart& start) noexcept;
+    [[nodiscard]] bool startNoise(const NoiseStart& start) noexcept;
     void releaseVoice(std::size_t voice) noexcept;
     void stopVoice(std::size_t voice) noexcept;
+    void stopNoise() noexcept;
     void stopAll() noexcept;
 
     void setMasterVolume(float volume) noexcept;
     [[nodiscard]] float masterVolume() const noexcept { return masterVolume_; }
     [[nodiscard]] bool isVoiceActive(std::size_t voice) const noexcept;
+    [[nodiscard]] bool isNoiseActive() const noexcept { return noiseVoice_.voice.active; }
 
     void renderBlock(AudioBlock& output) noexcept PIXEL_TWINS_SRAM;
 
@@ -140,12 +153,27 @@ private:
         bool active = false;
     };
 
+    struct NoiseVoice {
+        Voice voice{};
+        std::uint32_t bodyPhase = 0;
+        float bodyVolume = 0.0F;
+        float bodyFrequency = 0.0F;
+        float bodyEndFrequency = 0.0F;
+        float bodyPitchSeconds = 0.0F;
+        float bodySeconds = 0.0F;
+        std::uint8_t priority = 0;
+    };
+
     [[nodiscard]] static float envelopeBeforeRelease(const Voice& voice, float time) noexcept;
     static void advanceEnvelope(Voice& voice) noexcept;
     [[nodiscard]] static float envelopeLevel(Voice& voice) noexcept;
     [[nodiscard]] static float pitchAt(const Voice& voice, float time) noexcept;
+    [[nodiscard]] static float bodyPitchAt(const NoiseVoice& voice, float time) noexcept;
+    [[nodiscard]] static float bodyLevelAt(const NoiseVoice& voice, float time) noexcept;
 
     std::array<Voice, kAudioVoiceCount> voices_{};
+    NoiseVoice noiseVoice_{};
+    std::uint16_t noiseLfsr_ = 0x7fffU;
     float masterVolume_ = 1.0F;
 };
 

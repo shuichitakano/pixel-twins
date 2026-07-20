@@ -15,13 +15,16 @@ void Sequencer::play(const Sequence& sequence, Synthesizer& synthesizer) noexcep
     blockPosition_ = 0;
     eventIndex_ = 0;
     voiceTracks_.fill(kInvalidBgmTrack);
+    noiseTrack_ = kInvalidBgmTrack;
     playing_ = true;
     finishPending_ = false;
 }
 
 void Sequencer::stop(Synthesizer& synthesizer) noexcept {
     for (std::size_t voice = 0; voice < kBgmVoiceCount; ++voice) synthesizer.stopVoice(voice);
+    synthesizer.stopNoise();
     voiceTracks_.fill(kInvalidBgmTrack);
+    noiseTrack_ = kInvalidBgmTrack;
     sequence_ = nullptr;
     blockPosition_ = 0;
     eventIndex_ = 0;
@@ -38,6 +41,10 @@ void Sequencer::setTrackMuteMask(std::uint8_t mask, Synthesizer& synthesizer) no
             synthesizer.stopVoice(voice);
             voiceTracks_[voice] = kInvalidBgmTrack;
         }
+    }
+    if (noiseTrack_ < kBgmTrackCount && (newlyMuted & (1U << noiseTrack_)) != 0U) {
+        synthesizer.stopNoise();
+        noiseTrack_ = kInvalidBgmTrack;
     }
 }
 
@@ -59,6 +66,27 @@ void Sequencer::advanceBlock(Synthesizer& synthesizer) noexcept {
         const auto& instrument = sequence_->instruments[event.instrument];
         const auto frequency = eventFrequency(instrument, event.note);
         const auto velocity = 0.24F + static_cast<float>(event.velocity) / 127.0F * 0.76F;
+        if (instrument.noisePriority > 0) {
+            synthesizer.stopVoice(event.voice);
+            voiceTracks_[event.voice] = kInvalidBgmTrack;
+            const auto started = synthesizer.startNoise(NoiseStart{
+                VoiceStart{&instrument.timbre,
+                           0.0F,
+                           0.0F,
+                           0.0F,
+                           static_cast<float>(std::max<std::uint16_t>(1, event.durationBlocks))
+                               * kAudioBlockSeconds,
+                           velocity,
+                           0.0F},
+                instrument.noisePriority,
+                instrument.noiseBodyVolume,
+                instrument.noiseBodyFrequency,
+                instrument.noiseBodyEndFrequency,
+                instrument.noiseBodyPitchSeconds,
+                instrument.noiseBodySeconds});
+            if (started) noiseTrack_ = event.track;
+            continue;
+        }
         synthesizer.startVoice(
             event.voice,
             VoiceStart{&instrument.timbre,

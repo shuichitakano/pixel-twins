@@ -49,6 +49,27 @@ void Synthesizer::startVoice(std::size_t voiceIndex, const VoiceStart& start) no
     voice.active = true;
 }
 
+bool Synthesizer::startNoise(const NoiseStart& start) noexcept {
+    if (start.voice.timbre == nullptr || start.priority == 0
+        || (noiseVoice_.voice.active && start.priority < noiseVoice_.priority)) return false;
+    noiseVoice_ = NoiseVoice{};
+    auto& voice = noiseVoice_.voice;
+    voice.timbre = start.voice.timbre;
+    const auto& envelope = start.voice.timbre->envelope;
+    voice.gateSeconds = std::max(0.0F, envelope.attack) + std::max(0.0F, envelope.decay)
+        + std::max(0.0F, start.voice.holdSeconds);
+    voice.velocity = clampUnit(start.voice.velocity);
+    voice.pan = std::clamp(start.voice.timbre->pan + start.voice.pan, -1.0F, 1.0F);
+    voice.active = true;
+    noiseVoice_.priority = start.priority;
+    noiseVoice_.bodyVolume = std::max(0.0F, start.bodyVolume);
+    noiseVoice_.bodyFrequency = std::max(0.0F, start.bodyFrequency);
+    noiseVoice_.bodyEndFrequency = std::max(0.0F, start.bodyEndFrequency);
+    noiseVoice_.bodyPitchSeconds = std::max(0.0F, start.bodyPitchSeconds);
+    noiseVoice_.bodySeconds = std::max(0.0F, start.bodySeconds);
+    return true;
+}
+
 void Synthesizer::releaseVoice(std::size_t voiceIndex) noexcept {
     if (voiceIndex >= voices_.size()) return;
     auto& voice = voices_[voiceIndex];
@@ -62,8 +83,13 @@ void Synthesizer::stopVoice(std::size_t voiceIndex) noexcept {
     if (voiceIndex < voices_.size()) voices_[voiceIndex] = Voice{};
 }
 
+void Synthesizer::stopNoise() noexcept {
+    noiseVoice_ = NoiseVoice{};
+}
+
 void Synthesizer::stopAll() noexcept {
     for (auto& voice : voices_) voice = Voice{};
+    stopNoise();
 }
 
 void Synthesizer::setMasterVolume(float volume) noexcept {
@@ -151,6 +177,28 @@ float Synthesizer::pitchAt(const Voice& voice, float time) noexcept {
     return voice.frequency * std::pow(voice.endFrequency / voice.frequency, position);
 }
 
+float Synthesizer::bodyPitchAt(const NoiseVoice& noise, float time) noexcept {
+    if (noise.bodyPitchSeconds <= 0.0F || noise.bodyFrequency <= 0.0F
+        || noise.bodyEndFrequency <= 0.0F || noise.bodyFrequency == noise.bodyEndFrequency) {
+        return noise.bodyFrequency;
+    }
+    const auto position = clampUnit(time / noise.bodyPitchSeconds);
+    return noise.bodyFrequency
+        * std::pow(noise.bodyEndFrequency / noise.bodyFrequency, position);
+}
+
+float Synthesizer::bodyLevelAt(const NoiseVoice& noise, float time) noexcept {
+    if (noise.bodySeconds <= 0.0F || time >= noise.bodySeconds) return 0.0F;
+    constexpr float attack = 0.001F;
+    constexpr float decayEnd = 0.025F;
+    constexpr float sustain = 0.18F;
+    if (time < attack) return time / attack;
+    if (time < decayEnd) {
+        return 1.0F + (sustain - 1.0F) * ((time - attack) / (decayEnd - attack));
+    }
+    return sustain * (1.0F - (time - decayEnd) / (noise.bodySeconds - decayEnd));
+}
+
 void Synthesizer::renderBlock(AudioBlock& output) noexcept {
     struct BlockVoice {
         const WaveTable* wave;
@@ -160,6 +208,30 @@ void Synthesizer::renderBlock(AudioBlock& output) noexcept {
         bool active;
     };
     std::array<BlockVoice, kAudioVoiceCount> blockVoices{};
+
+    float noiseLeft = 0.0F;
+    float noiseRight = 0.0F;
+    float bodyLeft = 0.0F;
+    float bodyRight = 0.0F;
+    std::uint32_t bodyIncrement = 0;
+    if (noiseVoice_.voice.active) {
+        auto& voice = noiseVoice_.voice;
+        advanceEnvelope(voice);
+        const auto envelope = envelopeLevel(voice);
+        if (voice.active && envelope > 0.0F) {
+            const auto leftPan = std::sqrt(0.5F * (1.0F - voice.pan));
+            const auto rightPan = std::sqrt(0.5F * (1.0F + voice.pan));
+            const auto noiseGain = envelope * voice.velocity
+                * std::max(0.0F, voice.timbre->volume) * masterVolume_;
+            const auto bodyGain = bodyLevelAt(noiseVoice_, voice.envelopeElapsed) * voice.velocity
+                * noiseVoice_.bodyVolume * masterVolume_;
+            noiseLeft = noiseGain * leftPan;
+            noiseRight = noiseGain * rightPan;
+            bodyLeft = bodyGain * leftPan;
+            bodyRight = bodyGain * rightPan;
+            bodyIncrement = phaseIncrement(bodyPitchAt(noiseVoice_, voice.envelopeElapsed));
+        }
+    }
 
     for (std::size_t i = 0; i < voices_.size(); ++i) {
         auto& voice = voices_[i];
@@ -193,6 +265,19 @@ void Synthesizer::renderBlock(AudioBlock& output) noexcept {
             right += sample * block.right;
             voice.phase += block.increment;
         }
+        if (noiseVoice_.voice.active) {
+            const auto feedback = static_cast<std::uint16_t>(
+                ((noiseLfsr_ >> 0U) ^ (noiseLfsr_ >> 1U)) & 1U);
+            noiseLfsr_ = static_cast<std::uint16_t>((noiseLfsr_ >> 1U) | (feedback << 14U));
+            const auto noiseSample = (noiseLfsr_ & 1U) != 0U ? 29490.0F : -29490.0F;
+            const auto bodyPosition = static_cast<std::uint16_t>(noiseVoice_.bodyPhase >> 16U);
+            const auto bodySample = bodyPosition < 32768U
+                ? static_cast<float>(static_cast<std::int32_t>(bodyPosition) * 2 - 32767)
+                : static_cast<float>(98303 - static_cast<std::int32_t>(bodyPosition) * 2);
+            left += noiseSample * noiseLeft + bodySample * bodyLeft;
+            right += noiseSample * noiseRight + bodySample * bodyRight;
+            noiseVoice_.bodyPhase += bodyIncrement;
+        }
         output[frame * 2] = saturate16(left);
         output[frame * 2 + 1] = saturate16(right);
     }
@@ -200,6 +285,7 @@ void Synthesizer::renderBlock(AudioBlock& output) noexcept {
     for (auto& voice : voices_) {
         if (voice.active) voice.elapsed += kAudioBlockSeconds;
     }
+    if (noiseVoice_.voice.active) noiseVoice_.voice.elapsed += kAudioBlockSeconds;
 }
 
 } // namespace pixel_twins
