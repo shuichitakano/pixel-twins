@@ -73,6 +73,15 @@ void testNearestScale() {
     check(pixelAt(buffer, 4, 7) == 3);
     check(pixelAt(buffer, 6, 7) == 8);
 
+    constexpr std::array<ColorIndex, 16> downscalePattern{
+        1, 1, 2, 2,
+        1, 1, 2, 2,
+        3, 3, 4, 4,
+        3, 3, 4, 4,
+    };
+    drawSpriteEx(target, SpriteEx{10, 10, 1, 1, 4, 4, downscalePattern.data()});
+    check(pixelAt(buffer, 10, 10) == 4);
+
     constexpr std::array<ColorIndex, 4> clippedPattern{6, 6, 6, 6};
     drawSpriteEx(target,
                  SpriteEx{-2, -2, 4, 4, 2, 2, clippedPattern.data()});

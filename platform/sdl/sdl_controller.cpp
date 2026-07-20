@@ -113,15 +113,14 @@ void ControllerInput::processEvent(const SDL_Event& event) noexcept {
     if (event.type == SDL_EVENT_GAMEPAD_ADDED) openAvailableGamepads();
     if (event.type == SDL_EVENT_GAMEPAD_REMOVED) removeDisconnectedGamepads();
     if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat
-        && event.key.scancode >= SDL_SCANCODE_F1 && event.key.scancode <= SDL_SCANCODE_F7) {
-        const auto track = static_cast<unsigned>(event.key.scancode - SDL_SCANCODE_F1);
-        bgmTrackToggleMask_ = static_cast<std::uint8_t>(bgmTrackToggleMask_ | (1U << track));
+        && event.key.scancode >= SDL_SCANCODE_F1 && event.key.scancode <= SDL_SCANCODE_F12) {
+        functionKeyPress_ = static_cast<std::uint8_t>(event.key.scancode - SDL_SCANCODE_F1 + 1U);
     }
 }
 
-std::uint8_t ControllerInput::takeBgmTrackToggleMask() noexcept {
-    const auto result = bgmTrackToggleMask_;
-    bgmTrackToggleMask_ = 0;
+std::uint8_t ControllerInput::takeFunctionKeyPress() noexcept {
+    const auto result = functionKeyPress_;
+    functionKeyPress_ = 0;
     return result;
 }
 
