@@ -35,6 +35,7 @@ def _make_palette(manifest: Manifest, images: List[Image.Image]) -> Tuple[List[R
         ),
         manifest.max_pixels_per_asset,
     )
+    collected.update({target.color: target.weight for target in manifest.targets})
     capacity = manifest.asset_last - manifest.asset_first + 1
     dynamic = optimize_palette(
         collected,
@@ -171,6 +172,20 @@ def build(manifest_path: Path, output: Path, clean: bool = False) -> Dict[str, A
             _convert_asset(image, spec, mapper, palette, output)
             for image, spec in zip(images, manifest.assets)
         ]
+        palette_targets = []
+        for target in manifest.targets:
+            index = mapper.map_rgb(target.color)
+            resolved = palette[index]
+            palette_targets.append(
+                {
+                    "name": target.name,
+                    "desired_rgb": list(target.color),
+                    "weight": target.weight,
+                    "resolved_index": index,
+                    "resolved_rgb": list(resolved),
+                    "rgb_distance": math.sqrt(squared_distance(target.color, resolved)),
+                }
+            )
     finally:
         for image in images:
             image.close()
@@ -218,6 +233,7 @@ def build(manifest_path: Path, output: Path, clean: bool = False) -> Dict[str, A
         "name": manifest.name,
         "manifest": Path(os.path.relpath(manifest_path.resolve(), output)).as_posix(),
         "quantizer": manifest.quantizer,
+        "palette_targets": palette_targets,
         "palette_binary": {
             "file": palette_path.name,
             "format": "RGB888",
