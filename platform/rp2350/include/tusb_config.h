@@ -11,10 +11,10 @@
 #define CFG_TUH_ENABLED 1
 #define CFG_TUH_RPI_PIO_USB 1
 
-// 1台のUSBハブを介して2台のコントローラーを接続できる構成。
-#define CFG_TUH_HUB 1
-#define CFG_TUH_DEVICE_MAX 3
-#define CFG_TUH_HID 3
+// USB2へコントローラーを1台だけ直結する。
+#define CFG_TUH_HUB 0
+#define CFG_TUH_DEVICE_MAX 1
+#define CFG_TUH_HID 1
 #define CFG_TUH_CDC 0
 #define CFG_TUH_MSC 0
 #define CFG_TUH_VENDOR 0

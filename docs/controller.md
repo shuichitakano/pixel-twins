@@ -54,7 +54,7 @@ LED駆動がPIO0とPIO1を使用するためUSBホストはPIO2の3ステート�
 予約します。USBホストをLED用core 1より先に初期化することで、LED側が動的に確保する
 DMAチャンネルとの衝突を避けます。
 
-TinyUSBは列挙、HID転送、ハブを担当します。ゲームパッドの入力レポートは機種ごとに配置が
+TinyUSBは列挙とHID転送を担当します。ゲームパッドの入力レポートは機種ごとに配置が
 異なるため、VID/PIDでDS4またはDualSenseを識別し、USB接続用のreport ID 1だけを固定配置で
 読み取ります。Bluetooth接続用レポートには対応しません。
 
@@ -66,10 +66,10 @@ TinyUSBは列挙、HID転送、ハブを担当します。ゲームパッドの�
 | DualShock 4 CUH-ZCT2x | 054c | 09cc |
 | DualSense | 054c | 0ce6 |
 
-接続を認識した順にP1、P2へ割り当て、切断したスロットは再利用します。十字キーとフェイス
-ボタンはSDL実装と同じ物理位置へ変換し、Shareまたはタッチパッド押下を`back`、Optionsを
-`start`へ割り当てます。左スティックのデッドゾーンもSDL実装と同じ約8000です。
+USB2へ直結した1台をP1へ割り当てます。USBハブには対応しません。十字キーとフェイスボタン
+はSDL実装と同じ物理位置へ変換し、Shareまたはタッチパッド押下を`back`、Optionsを`start`
+へ割り当てます。左スティックのデッドゾーンもSDL実装と同じ約8000です。
 
 `UsbControllerInput::task()`はcore 0から高頻度に呼びます。ゲームフレームの入力確定時に
 `UsbControllerInput::update()`を1回呼ぶことで、最新レポートから`pressed`と`released`を
-生成します。2台を同時接続する場合はUSBハブを使用できます。
+生成します。
