@@ -60,3 +60,11 @@ add_test(NAME pixel_twins_audio_system_tests COMMAND pixel_twins_audio_system_te
 add_executable(controller_test controller_test.cpp)
 target_link_libraries(controller_test PRIVATE pixel_twins::pixel_twins)
 add_test(NAME controller_test COMMAND controller_test)
+
+add_executable(sony_hid_test
+    sony_hid_test.cpp
+    ../platform/rp2350/sony_hid.cpp
+)
+target_include_directories(sony_hid_test PRIVATE ../platform/rp2350/include)
+target_link_libraries(sony_hid_test PRIVATE pixel_twins::pixel_twins)
+add_test(NAME sony_hid_test COMMAND sony_hid_test)
