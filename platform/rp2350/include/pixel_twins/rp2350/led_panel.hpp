@@ -1,0 +1,55 @@
+#pragma once
+
+#include "pixel_twins/framebuffer.hpp"
+#include "pixel_twins/platform.hpp"
+
+#include <array>
+#include <cstddef>
+#include <cstdint>
+
+namespace pixel_twins::rp2350 {
+
+class LedPanelDriver {
+public:
+    LedPanelDriver() noexcept;
+
+    void initialize() noexcept;
+    void setPalette(const Palette& palette) noexcept PIXEL_TWINS_SRAM;
+    void present(const PixelBuffer& pixels) noexcept PIXEL_TWINS_SRAM;
+
+private:
+    static constexpr std::size_t kSequenceWords = 8;
+    static constexpr std::size_t kLineDataWords = 16 * 10 * kSequenceWords;
+    static constexpr std::size_t kLineBufferWords = 1 + kLineDataWords;
+    static constexpr std::size_t kCommand0Capacity = 48;
+    static constexpr std::size_t kCommand1Capacity = 512;
+
+    using ColorSequence = std::array<std::uint32_t, kSequenceWords>;
+    using LineBuffer = std::array<std::uint32_t, kLineBufferWords>;
+
+    void buildLineBuffer(LineBuffer& destination,
+                         const PixelBuffer& pixels,
+                         std::size_t scanLine) noexcept PIXEL_TWINS_SRAM;
+    void startDataTransfer(const LineBuffer& buffer) noexcept PIXEL_TWINS_SRAM;
+    void waitForDataTransfer() noexcept PIXEL_TWINS_SRAM;
+    void sendCommands() noexcept PIXEL_TWINS_SRAM;
+    void startPwmScan() noexcept PIXEL_TWINS_SRAM;
+    void waitForPwmScan() noexcept PIXEL_TWINS_SRAM;
+
+    std::array<ColorSequence, kPaletteSize> colorSequences_;
+    std::array<LineBuffer, 2> lineBuffers_;
+    std::array<std::uint32_t, kCommand0Capacity> command0_;
+    std::array<std::uint32_t, kCommand1Capacity> command1_;
+    std::size_t command0Size_;
+    std::size_t command1Size_;
+    int dataDmaChannel_;
+    int commandDmaChannel_;
+    int pwmDmaChannel_;
+    std::uint32_t pwmWord_;
+    std::uint32_t commandProgramOffset_;
+    std::uint32_t dataProgramOffset_;
+    std::uint32_t pwmProgramOffset_;
+    bool initialized_;
+};
+
+} // namespace pixel_twins::rp2350

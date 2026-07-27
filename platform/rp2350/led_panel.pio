@@ -1,0 +1,77 @@
+; GS6263搭載160x120パネル2枚用PIO。
+; GPIO2..13へ12bitを並列出力し、GPIO14/15をCLK/LATとしてside-setする。
+
+.program led_command_12
+.side_set 2
+
+.wrap_target
+    out x, 16                  side 0b00 ; LAT lowのクロック数 - 1
+    out y, 16                  side 0b00 ; LAT highのクロック数 - 1
+command_low:
+    out pins, 12              side 0b00
+    jmp x-- command_low       side 0b01
+command_high:
+    out pins, 12              side 0b10
+    jmp y-- command_high      side 0b11
+.wrap
+
+
+.program led_data_12
+.side_set 2
+
+.wrap_target
+data_idle:
+    ; FIFOが空の間もGS6263用のクロックを出し続ける。
+    jmp !osre data_start      side 0b00
+    jmp data_idle             side 0b01
+
+data_start:
+    out y, 32                 side 0b00 ; 16出力ブロックの数 - 1
+data_output:
+    mov x, isr                side 0b00 ; 通常クロック数 - 1
+data_loop:
+    out pins, 12              side 0b00
+    jmp x-- data_loop         side 0b01
+
+    ; 160クロック目だけLATを立てる。
+    out pins, 12              side 0b10
+    nop                       side 0b11
+    jmp y-- data_output       side 0b00
+.wrap
+
+
+; 一周分のPWMクロックとライン選択信号を送る。
+; side-set: OE（GS6263のPWMクロック）
+; set pins:
+;   bit 0: A（ライン選択クロック）
+;   bit 1: B（ライン出力enable、low active）
+;   bit 2: C（ライン選択データ）
+.program led_pwm
+.side_set 1
+
+    out isr, 16               side 0 ; PWMクロック数 - 1
+    out y, 16                 side 0 ; ライン数 - 2
+
+    ; FIFO待ち中はB=1でライン出力を無効にしている。
+    ; 最初のPWMクロックを出す直前にライン0を有効にする。
+    set pins, 0b000           side 0
+pwm_line:
+    mov x, isr                side 0 [13]
+pwm_loop:
+    nop                       side 1
+    jmp x-- pwm_loop          side 0
+
+    set pins, 0b010           side 0 [15]
+    set pins, 0b011           side 0 [15]
+    set pins, 0b000           side 0
+    jmp y-- pwm_line          side 0
+
+    mov x, isr                side 0 [2]
+pwm_last_loop:
+    nop                       side 1
+    jmp x-- pwm_last_loop     side 0
+
+    set pins, 0b110           side 0 [15]
+    set pins, 0b111           side 0 [15]
+    ; ライン0を選択したまま、次のFIFOデータまで出力を無効にする。
+    set pins, 0b010           side 0
