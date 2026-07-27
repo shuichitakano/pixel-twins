@@ -134,12 +134,14 @@ void drawSpriteEx(RenderTarget target, const SpriteEx& sprite) noexcept {
     }
 
     for (auto y = startY; y < endY; ++y) {
-        const auto sourceY = static_cast<std::uint32_t>(y) * sprite.sh / sprite.dh;
+        const auto sourceY = (static_cast<std::uint32_t>(y) * sprite.sh + sprite.sh / 2U)
+            / sprite.dh;
         auto* destination = target.pixels
             + static_cast<std::size_t>(target.originY + sprite.dy + y) * target.stride
             + static_cast<std::size_t>(target.originX + sprite.dx + startX);
         for (auto x = startX; x < endX; ++x) {
-            const auto sourceX = static_cast<std::uint32_t>(x) * sprite.sw / sprite.dw;
+            const auto sourceX = (static_cast<std::uint32_t>(x) * sprite.sw + sprite.sw / 2U)
+                / sprite.dw;
             const auto source = sprite.p[sourceY * sprite.sw + sourceX];
             copyOpaque(destination++, source);
         }

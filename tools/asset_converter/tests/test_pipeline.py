@@ -22,6 +22,9 @@ def _write_manifest(path: Path, assets):
                         {"index": 2, "name": "effect", "color": "#ff0000"},
                         {"index": 18, "name": "font", "color": "#00ff00"},
                     ],
+                    "targets": [
+                        {"name": "boss-shadow", "color": "#654321", "weight": 64},
+                    ],
                 },
                 "assets": assets,
             }
@@ -63,6 +66,11 @@ def test_build_keeps_shared_palette_and_transparency(tmp_path):
     assert sum(entry["usage_pixels"] for entry in report["palette"]) == 5
     assert (tmp_path / "out/report.html").is_file()
     assert (tmp_path / "out/report.json").is_file()
+    target = report["palette_targets"][0]
+    assert target["name"] == "boss-shadow"
+    assert target["desired_rgb"] == [101, 67, 33]
+    assert 32 <= target["resolved_index"] <= 40
+    assert target["weight"] == 64
 
 
 def test_manifest_rejects_reserved_asset_overlap(tmp_path):

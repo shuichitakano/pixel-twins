@@ -28,6 +28,24 @@ def write_html(report: Dict[str, Any], path: Path) -> None:
             "</tr>"
         )
     summary = report["summary"]
+    target_rows = []
+    for target in report.get("palette_targets", []):
+        desired = target["desired_rgb"]
+        resolved = target["resolved_rgb"]
+        target_rows.append(
+            "<tr>"
+            f"<td>{html.escape(target['name'])}</td>"
+            f"<td>#{desired[0]:02x}{desired[1]:02x}{desired[2]:02x}</td>"
+            f"<td>{target['resolved_index']}: "
+            f"#{resolved[0]:02x}{resolved[1]:02x}{resolved[2]:02x}</td>"
+            f"<td>{target['rgb_distance']:.2f}</td>"
+            "</tr>"
+        )
+    targets = "" if not target_rows else (
+        "<h2>目標色</h2><table><thead><tr><th>名前</th><th>希望RGB</th>"
+        "<th>割り当て</th><th>RGB距離</th></tr></thead><tbody>"
+        + "".join(target_rows) + "</tbody></table>"
+    )
     document = f"""<!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><title>{html.escape(report['name'])} 減色レポート</title>
 <style>
@@ -41,6 +59,7 @@ th{{background:#eee}}img{{max-width:256px;image-rendering:pixelated;background:#
 raw画素 {summary['indexed_pixel_bytes']:,} B / 共有パレット 768 B /
 中間PNG {summary['indexed_png_bytes']:,} B</p>
 <h2>パレット</h2><div class="swatches">{_swatches(report)}</div>
+{targets}
 <h2>アセット</h2><table><thead><tr><th>アセット</th><th>変換前</th><th>変換後</th><th>差分</th><th>品質</th><th>サイズ</th></tr></thead>
 <tbody>{''.join(rows)}</tbody></table></body></html>"""
     path.write_text(document, encoding="utf-8")

@@ -25,6 +25,13 @@ class AssetSpec:
 
 
 @dataclass(frozen=True)
+class PaletteTarget:
+    name: str
+    color: Rgb
+    weight: int
+
+
+@dataclass(frozen=True)
 class Manifest:
     name: str
     reserved: Dict[int, Tuple[str, Rgb]]
@@ -33,6 +40,7 @@ class Manifest:
     sample_pixels: int
     max_pixels_per_asset: int
     quantizer: str
+    targets: List[PaletteTarget]
     assets: List[AssetSpec]
 
 
@@ -97,6 +105,24 @@ def load_manifest(path: Path) -> Manifest:
     if overlap:
         raise ManifestError(f"asset_rangeと予約色が重複しています: {overlap}")
 
+    targets = []
+    target_names = set()
+    for item in palette.get("targets", []):
+        try:
+            name = item["name"]
+            color = _rgb(item["color"], f"targets[{name}].color")
+        except (KeyError, TypeError) as exc:
+            raise ManifestError("目標色にはnameとcolorが必要です") from exc
+        if not isinstance(name, str) or not _ID_RE.fullmatch(name):
+            raise ManifestError(f"不正な目標色名です: {name!r}")
+        if name in target_names:
+            raise ManifestError(f"目標色名が重複しています: {name}")
+        weight = item.get("weight", 1)
+        if not isinstance(weight, int) or not 1 <= weight <= 1_000_000:
+            raise ManifestError(f"{name}: 目標色weightは1〜1000000の整数で指定してください")
+        target_names.add(name)
+        targets.append(PaletteTarget(name, color, weight))
+
     assets = []
     seen = set()
     for item in raw.get("assets", []):
@@ -154,5 +180,6 @@ def load_manifest(path: Path) -> Manifest:
         sample_pixels=sample_pixels,
         max_pixels_per_asset=max_pixels_per_asset,
         quantizer=quantizer,
+        targets=targets,
         assets=assets,
     )

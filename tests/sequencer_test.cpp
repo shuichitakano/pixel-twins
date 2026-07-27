@@ -112,6 +112,24 @@ void testTrackMuteMask() {
     check(!synth.isVoiceActive(0));
 }
 
+void testSequenceUsesDedicatedNoiseChannel() {
+    std::array<SequenceInstrument, 1> instruments{{
+        SequenceInstrument{Timbre{&kStandardWaves.noise,
+                                  Envelope{0.0F, 0.0F, 1.0F, 0.0F}, 0.5F, -1.0F}},
+    }};
+    instruments[0].noisePriority = 1;
+    const std::array<SequenceEvent, 1> events{{SequenceEvent{0, 2, 42, 127, 0, 0, 1}}};
+    const Sequence sequence{events.data(), 1, instruments.data(), 1, 3, 0, 0, false};
+    Synthesizer synth;
+    Sequencer sequencer;
+    sequencer.play(sequence, synth);
+    sequencer.advanceBlock(synth);
+    check(synth.isNoiseActive());
+    check(!synth.isVoiceActive(0));
+    sequencer.setTrackMuteMask(1U << 1U, synth);
+    check(!synth.isNoiseActive());
+}
+
 } // namespace
 
 int main() {
@@ -119,5 +137,6 @@ int main() {
     testSequenceAndLoop();
     testOneShotStops();
     testTrackMuteMask();
+    testSequenceUsesDedicatedNoiseChannel();
     return 0;
 }

@@ -17,6 +17,12 @@ struct SequenceInstrument {
     float fixedFrequency = 0.0F;
     float endRatio = 1.0F;
     float pitchSeconds = 0.0F;
+    std::uint8_t noisePriority = 0;
+    float noiseBodyVolume = 0.0F;
+    float noiseBodyFrequency = 0.0F;
+    float noiseBodyEndFrequency = 0.0F;
+    float noiseBodyPitchSeconds = 0.0F;
+    float noiseBodySeconds = 0.0F;
 };
 
 struct SequenceEvent {
@@ -61,6 +67,7 @@ private:
     std::uint32_t blockPosition_ = 0;
     std::uint32_t eventIndex_ = 0;
     std::array<std::uint8_t, kBgmVoiceCount> voiceTracks_{};
+    std::uint8_t noiseTrack_ = kInvalidBgmTrack;
     std::uint8_t trackMuteMask_ = 0;
     bool playing_ = false;
     bool finishPending_ = false;

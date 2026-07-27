@@ -108,6 +108,32 @@ void testSaturationAndStop() {
     check(output[0] == 0);
 }
 
+void testDedicatedLfsrNoiseAndPriority() {
+    const Timbre noise{&kFullWave, Envelope{0.0F, 0.0F, 1.0F, 0.0F}, 0.5F, -1.0F};
+    Synthesizer synth;
+    const auto start = NoiseStart{
+        VoiceStart{&noise, 0.0F, 0.0F, 0.0F, 1.0F, 1.0F, 0.0F}, 3};
+    check(synth.startNoise(start));
+    check(synth.isNoiseActive());
+    check(!synth.isVoiceActive(0));
+    check(!synth.startNoise(NoiseStart{
+        VoiceStart{&noise, 0.0F, 0.0F, 0.0F, 1.0F, 1.0F, 0.0F}, 2}));
+
+    AudioBlock output{};
+    synth.renderBlock(output);
+    bool hasPositive = false;
+    bool hasNegative = false;
+    for (std::size_t frame = 0; frame < kAudioBlockFrames; ++frame) {
+        hasPositive = hasPositive || output[frame * 2] > 0;
+        hasNegative = hasNegative || output[frame * 2] < 0;
+        check(output[frame * 2 + 1] == 0);
+    }
+    check(hasPositive && hasNegative);
+    synth.stopNoise();
+    synth.renderBlock(output);
+    check(std::all_of(output.begin(), output.end(), [](auto sample) { return sample == 0; }));
+}
+
 } // namespace
 
 int main() {
@@ -117,5 +143,6 @@ int main() {
     testNoiseExpansionPreservesSourceAnchors();
     testEnvelopeBreakpointsAreNotSkipped();
     testSaturationAndStop();
+    testDedicatedLfsrNoiseAndPriority();
     return 0;
 }
