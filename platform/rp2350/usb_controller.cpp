@@ -5,13 +5,15 @@
 
 #include "pio_usb.h"
 #include "tusb.h"
+#include "host/usbh_pvt.h"
 
 #include <algorithm>
 
 namespace pixel_twins::rp2350 {
 namespace {
 
-constexpr std::uint8_t kUsbRootHubPort = 1;
+constexpr std::uint8_t kNativeUsbRootHubPort = 0;
+constexpr std::uint8_t kPioUsbRootHubPort = 1;
 constexpr std::uint8_t kUsbPio = 2;
 constexpr std::uint8_t kUsbDmaChannel = 15;
 UsbControllerInput* activeInput = nullptr;
@@ -33,9 +35,10 @@ bool UsbControllerInput::initialize() noexcept {
     config.tx_ch = kUsbDmaChannel;
 
     activeInput = this;
-    if (!tuh_configure(kUsbRootHubPort, TUH_CFGID_RPI_PIO_USB_CONFIGURATION,
+    if (!tuh_configure(kPioUsbRootHubPort, TUH_CFGID_RPI_PIO_USB_CONFIGURATION,
                        &config)
-        || !tuh_init(kUsbRootHubPort)) {
+        || !tuh_init(kNativeUsbRootHubPort)
+        || !tuh_init(kPioUsbRootHubPort)) {
         activeInput = nullptr;
         return false;
     }
@@ -55,27 +58,22 @@ void UsbControllerInput::update(Controllers& controllers) noexcept {
 }
 
 void UsbControllerInput::mount(
-    std::uint8_t deviceAddress, std::uint8_t instance,
+    std::uint8_t rootHubPort, std::uint8_t deviceAddress,
+    std::uint8_t instance,
     std::uint16_t vendorId, std::uint16_t productId) noexcept {
     const auto kind = identifySonyController(vendorId, productId);
-    if (kind == SonyControllerKind::unsupported) return;
+    if (kind == SonyControllerKind::unsupported
+        || rootHubPort >= slots_.size()) return;
 
-    const auto existing = std::find_if(
-        slots_.begin(), slots_.end(), [=](const Slot& slot) {
-            return slot.deviceAddress == deviceAddress && slot.instance == instance;
-        });
-    if (existing != slots_.end()) return;
-
-    const auto free = std::find_if(slots_.begin(), slots_.end(),
-                                   [](const Slot& slot) {
-                                       return slot.deviceAddress == 0;
-                                   });
-    if (free == slots_.end()) return;
-    free->deviceAddress = deviceAddress;
-    free->instance = instance;
-    free->kind = static_cast<std::uint8_t>(kind);
-    free->sample.connected = true;
-    free->sample.gamepad = true;
+    auto& slot = slots_[rootHubPort];
+    // 複数HID interfaceを持つ機器では、最初に認識したinterfaceだけを使う。
+    if (slot.deviceAddress != 0) return;
+    slot = {};
+    slot.deviceAddress = deviceAddress;
+    slot.instance = instance;
+    slot.kind = static_cast<std::uint8_t>(kind);
+    slot.sample.connected = true;
+    slot.sample.gamepad = true;
 }
 
 void UsbControllerInput::unmount(
@@ -116,7 +114,7 @@ void tuh_hid_mount_cb(
     std::uint16_t productId = 0;
     tuh_vid_pid_get(devAddr, &vendorId, &productId);
     pixel_twins::rp2350::activeInput->mount(
-        devAddr, instance, vendorId, productId);
+        usbh_get_rhport(devAddr), devAddr, instance, vendorId, productId);
     static_cast<void>(tuh_hid_receive_report(devAddr, instance));
 }
 

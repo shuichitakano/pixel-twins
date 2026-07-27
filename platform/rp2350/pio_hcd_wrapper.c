@@ -1,0 +1,19 @@
+#define CFG_TUH_RPI_PIO_USB 1
+
+#define hcd_configure pio_hcd_configure
+#define hcd_init pio_hcd_init
+#define hcd_port_reset pio_hcd_port_reset
+#define hcd_port_reset_end pio_hcd_port_reset_end
+#define hcd_port_connect_status pio_hcd_port_connect_status
+#define hcd_port_speed_get pio_hcd_port_speed_get
+#define hcd_device_close pio_hcd_device_close
+#define hcd_frame_number pio_hcd_frame_number
+#define hcd_int_enable pio_hcd_int_enable
+#define hcd_int_disable pio_hcd_int_disable
+#define hcd_edpt_open pio_hcd_edpt_open
+#define hcd_edpt_xfer pio_hcd_edpt_xfer
+#define hcd_edpt_abort_xfer pio_hcd_edpt_abort_xfer
+#define hcd_setup_send pio_hcd_setup_send
+#define hcd_edpt_clear_stall pio_hcd_edpt_clear_stall
+
+#include "portable/raspberrypi/pio_usb/hcd_pio_usb.c"

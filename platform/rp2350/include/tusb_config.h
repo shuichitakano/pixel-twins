@@ -9,12 +9,14 @@
 #endif
 
 #define CFG_TUH_ENABLED 1
-#define CFG_TUH_RPI_PIO_USB 1
+#ifndef CFG_TUH_RPI_PIO_USB
+#define CFG_TUH_RPI_PIO_USB 0
+#endif
 
-// USB2へコントローラーを1台だけ直結する。
+// USB1とUSB2へコントローラーを各1台直結する。HUBは使用しない。
 #define CFG_TUH_HUB 0
-#define CFG_TUH_DEVICE_MAX 1
-#define CFG_TUH_HID 1
+#define CFG_TUH_DEVICE_MAX 2
+#define CFG_TUH_HID 2
 #define CFG_TUH_CDC 0
 #define CFG_TUH_MSC 0
 #define CFG_TUH_VENDOR 0

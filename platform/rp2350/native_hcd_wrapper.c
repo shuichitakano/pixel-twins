@@ -1,0 +1,19 @@
+#define CFG_TUH_RPI_PIO_USB 0
+
+#define hcd_init native_hcd_init
+#define hcd_deinit native_hcd_deinit
+#define hcd_port_reset native_hcd_port_reset
+#define hcd_port_reset_end native_hcd_port_reset_end
+#define hcd_port_connect_status native_hcd_port_connect_status
+#define hcd_port_speed_get native_hcd_port_speed_get
+#define hcd_device_close native_hcd_device_close
+#define hcd_frame_number native_hcd_frame_number
+#define hcd_int_enable native_hcd_int_enable
+#define hcd_int_disable native_hcd_int_disable
+#define hcd_edpt_open native_hcd_edpt_open
+#define hcd_edpt_xfer native_hcd_edpt_xfer
+#define hcd_edpt_abort_xfer native_hcd_edpt_abort_xfer
+#define hcd_setup_send native_hcd_setup_send
+#define hcd_edpt_clear_stall native_hcd_edpt_clear_stall
+
+#include "portable/raspberrypi/rp2040/hcd_rp2040.c"

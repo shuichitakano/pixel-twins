@@ -47,16 +47,20 @@ macOSでの移植とデバッグ用に、ゲームパッド入力へ次のキー
 `Presenter::processEvents(&controllerInput)`へ渡し、その後に
 `controllerInput.update(controllers)`を1回呼びます。入力のエッジはこの`update`単位です。
 
-## RP2350 USB2実装
+## RP2350 USBホスト実装
 
-USB2はGPIO20をD+、GPIO21をD-として、Pico-PIO-USBとTinyUSBのホストスタックへ接続します。
-LED駆動がPIO0とPIO1を使用するためUSBホストはPIO2の3ステートマシンを使い、DMA15を
-予約します。USBホストをLED用core 1より先に初期化することで、LED側が動的に確保する
-DMAチャンネルとの衝突を避けます。
+USB1はRP2350内蔵USBコントローラーをホストとして使用し、接続したゲームパッドをP1へ
+割り当てます。USB2はGPIO20をD+、GPIO21をD-としてPico-PIO-USBでホスト化し、P2へ
+割り当てます。どちらもゲームパッドを1台ずつ直結し、USBハブには対応しません。
 
-TinyUSBは列挙とHID転送を担当します。ゲームパッドの入力レポートは機種ごとに配置が
-異なるため、VID/PIDでDS4またはDualSenseを識別し、USB接続用のreport ID 1だけを固定配置で
-読み取ります。Bluetooth接続用レポートには対応しません。
+LED駆動がPIO0とPIO1を使用するためUSB2はPIO2の3ステートマシンを使い、DMA15を予約します。
+USBホストをLED用core 1より先に初期化することで、LED側が動的に確保するDMAチャンネルとの
+衝突を避けます。
+
+TinyUSBの列挙とHID層は2つのroot portで共有します。root port 0を内蔵USB HCD、root port 1を
+PIO-USB HCDへ振り分けます。ゲームパッドの入力レポートは機種ごとに配置が異なるため、
+VID/PIDでDS4またはDualSenseを識別し、USB接続用のreport ID 1だけを固定配置で読み取ります。
+Bluetooth接続用レポートには対応しません。
 
 対応機種は次の通りです。
 
@@ -66,9 +70,9 @@ TinyUSBは列挙とHID転送を担当します。ゲームパッドの入力レ�
 | DualShock 4 CUH-ZCT2x | 054c | 09cc |
 | DualSense | 054c | 0ce6 |
 
-USB2へ直結した1台をP1へ割り当てます。USBハブには対応しません。十字キーとフェイスボタン
-はSDL実装と同じ物理位置へ変換し、Shareまたはタッチパッド押下を`back`、Optionsを`start`
-へ割り当てます。左スティックのデッドゾーンもSDL実装と同じ約8000です。
+十字キーとフェイスボタンはSDL実装と同じ物理位置へ変換し、Shareまたはタッチパッド押下を
+`back`、Optionsを`start`へ割り当てます。左スティックのデッドゾーンもSDL実装と同じ
+約8000です。
 
 `UsbControllerInput::task()`はcore 0から高頻度に呼びます。ゲームフレームの入力確定時に
 `UsbControllerInput::update()`を1回呼ぶことで、最新レポートから`pressed`と`released`を
