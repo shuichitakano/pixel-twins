@@ -180,6 +180,7 @@ void PwmAudioPlayer::renderBuffer(std::size_t bufferIndex) noexcept {
     const auto elapsed = time_us_32() - startedAt;
     diagnostics_.latestRenderUs = elapsed;
     if (elapsed > diagnostics_.maximumRenderUs) diagnostics_.maximumRenderUs = elapsed;
+    diagnostics_.totalRenderUs += elapsed;
 }
 
 void PwmAudioPlayer::configureDmaChannel(

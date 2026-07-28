@@ -14,6 +14,7 @@ public:
     struct Diagnostics {
         volatile std::uint32_t latestRenderUs = 0;
         volatile std::uint32_t maximumRenderUs = 0;
+        volatile std::uint32_t totalRenderUs = 0;
         volatile std::uint32_t completedBlocks = 0;
         volatile std::uint32_t underruns = 0;
     };
