@@ -26,6 +26,8 @@ constexpr WaveTable makeFullWave() {
 }
 
 constexpr auto kRampWave = makeRampWave();
+constexpr auto kExpandedRampWave =
+    ExpandedWaveTable{WaveTableSource{makeRampWave().samples}};
 constexpr auto kFullWave = makeFullWave();
 
 void testSilenceOverwritesOutput() {
@@ -39,17 +41,17 @@ void testSilenceOverwritesOutput() {
 void testWavePhaseAndHardPan() {
     const Timbre timbre{&kRampWave, Envelope{0.0F, 0.0F, 1.0F, 0.1F}, 1.0F, -1.0F};
     Synthesizer synth;
-    synth.startVoice(0, VoiceStart{&timbre, 187.5F, 187.5F, 0.0F, 1.0F, 1.0F, 0.0F});
+    synth.startVoice(0, VoiceStart{&timbre, 1500.0F, 1500.0F, 0.0F, 1.0F, 1.0F, 0.0F});
     AudioBlock output{};
     synth.renderBlock(output);
     for (std::size_t i = 0; i < kWaveTableSourceSize; ++i) {
-        check(output[i * 2] == static_cast<std::int16_t>(i * 100));
+        check(output[i * 2] == static_cast<std::int16_t>(i * 800));
         check(output[i * 2 + 1] == 0);
     }
 }
 
 void testPitchCurveOverridesScalarPitch() {
-    constexpr std::array<float, 2> curve{{187.5F, 187.5F}};
+    constexpr std::array<float, 2> curve{{1500.0F, 1500.0F}};
     const Timbre timbre{&kRampWave, Envelope{0.0F, 0.0F, 1.0F, 0.1F}, 1.0F, -1.0F};
     Synthesizer synth;
     synth.startVoice(0, VoiceStart{&timbre, 0.0F, 0.0F, 0.1F, 1.0F, 1.0F, 0.0F,
@@ -57,26 +59,35 @@ void testPitchCurveOverridesScalarPitch() {
     AudioBlock output{};
     synth.renderBlock(output);
     for (std::size_t i = 0; i < kWaveTableSourceSize; ++i) {
-        check(output[i * 2] == static_cast<std::int16_t>(i * 100));
+        check(output[i * 2] == static_cast<std::int16_t>(i * 800));
         check(output[i * 2 + 1] == 0);
     }
 }
 
-void testNoiseExpansionPreservesSourceAnchors() {
+void testExpandedWaveUsesAdditionalPhaseBits() {
+    const Timbre timbre{
+        &kExpandedRampWave, Envelope{0.0F, 0.0F, 1.0F, 0.1F}, 1.0F, -1.0F};
+    Synthesizer synth;
+    synth.startVoice(
+        0, VoiceStart{&timbre, 187.5F, 187.5F, 0.0F, 1.0F, 1.0F, 0.0F});
+    AudioBlock output{};
+    synth.renderBlock(output);
+    for (std::size_t i = 0; i < kWaveTableSourceSize; ++i) {
+        check(output[i * 2] == static_cast<std::int16_t>(i * 100));
+    }
+}
+
+void testNoiseWavePreservesSource() {
     WaveTableSource source{};
     for (std::size_t i = 0; i < source.size(); ++i) {
         source[i] = static_cast<std::int16_t>(static_cast<std::int32_t>(i) * 1700 - 25000);
     }
     const auto linear = WaveTable{source};
     const auto noise = makeNoiseWave(source, 0x12345678U);
-    bool hasAddedDetail = false;
     for (std::size_t i = 0; i < source.size(); ++i) {
         check(noise.samples[i * kWaveTableExpansion] == source[i]);
+        check(noise.samples[i] == linear.samples[i]);
     }
-    for (std::size_t i = 0; i < kWaveTableSize; ++i) {
-        if (noise.samples[i] != linear.samples[i]) hasAddedDetail = true;
-    }
-    check(hasAddedDetail);
 }
 
 void testEnvelopeBreakpointsAreNotSkipped() {
@@ -140,7 +151,8 @@ int main() {
     testSilenceOverwritesOutput();
     testWavePhaseAndHardPan();
     testPitchCurveOverridesScalarPitch();
-    testNoiseExpansionPreservesSourceAnchors();
+    testExpandedWaveUsesAdditionalPhaseBits();
+    testNoiseWavePreservesSource();
     testEnvelopeBreakpointsAreNotSkipped();
     testSaturationAndStop();
     testDedicatedLfsrNoiseAndPriority();

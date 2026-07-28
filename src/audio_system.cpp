@@ -23,7 +23,8 @@ bool SfxRequestQueue::tryPop(SfxRequest& request) noexcept {
 }
 
 bool AudioSystem::playSfx(const SfxRequest& request) noexcept {
-    if (request.voice.timbre == nullptr || request.voice.timbre->wave == nullptr) return false;
+    if (request.voice.timbre == nullptr
+        || request.voice.timbre->wave.samples == nullptr) return false;
     return sfxRequests_.tryPush(request);
 }
 
@@ -54,10 +55,23 @@ void AudioSystem::setBgmTrackMuteMask(std::uint8_t mask) noexcept {
 }
 
 void AudioSystem::renderBlock(AudioBlock& output) noexcept {
+    renderFrames(
+        &output,
+        [](void* context,
+           std::size_t frame,
+           std::int16_t left,
+           std::int16_t right) noexcept {
+            auto& block = *static_cast<AudioBlock*>(context);
+            block[frame * kAudioChannels] = left;
+            block[frame * kAudioChannels + 1u] = right;
+        });
+}
+
+void AudioSystem::renderFrames(void* context, AudioFrameWriter writer) noexcept {
     SfxRequest request;
     while (sfxRequests_.tryPop(request)) startSfx(request);
     sequencer_.advanceBlock(synthesizer_);
-    synthesizer_.renderBlock(output);
+    synthesizer_.renderFrames(context, writer);
 }
 
 void AudioSystem::startSfx(const SfxRequest& request) noexcept {

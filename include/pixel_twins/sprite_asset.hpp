@@ -2,6 +2,7 @@
 
 #include "pixel_twins/sprite.hpp"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 
@@ -23,8 +24,16 @@ struct SpriteFramePattern {
     std::uint8_t height;
 };
 
+struct SpritePixelRegion {
+    std::uint32_t sourceOffset;
+    const ColorIndex* pixels;
+    std::size_t size;
+};
+
 class SpriteAssetPackView {
 public:
+    static constexpr std::size_t kMaximumPixelRegions = 5;
+
     SpriteAssetPackView() noexcept = default;
     SpriteAssetPackView(const std::uint8_t* data, std::size_t size) noexcept;
 
@@ -34,6 +43,11 @@ public:
                                   std::size_t metadataSize,
                                   const ColorIndex* pixels,
                                   std::size_t pixelSize) noexcept PIXEL_TWINS_SRAM;
+    [[nodiscard]] bool resetSplitRegions(
+        const std::uint8_t* metadata,
+        std::size_t metadataSize,
+        const SpritePixelRegion* regions,
+        std::size_t regionCount) noexcept PIXEL_TWINS_SRAM;
     [[nodiscard]] bool valid() const noexcept;
     [[nodiscard]] std::uint16_t assetCount() const noexcept;
 
@@ -59,9 +73,13 @@ public:
                                     Sprite& result) const noexcept PIXEL_TWINS_SRAM;
 
 private:
+    [[nodiscard]] const ColorIndex* pixelsAt(
+        std::uint32_t offset) const noexcept PIXEL_TWINS_SRAM;
+
     const std::uint8_t* data_ = nullptr;
     const std::uint8_t* frameTable_ = nullptr;
-    const std::uint8_t* pixelData_ = nullptr;
+    std::array<SpritePixelRegion, kMaximumPixelRegions> pixelRegions_{};
+    std::uint8_t pixelRegionCount_ = 0;
     std::uint16_t assetCount_ = 0;
 };
 

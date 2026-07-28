@@ -15,7 +15,7 @@ void testStandardWaves() {
     check(kStandardWaves.sine.samples[8 * kWaveTableExpansion] == 32767);
     check(kStandardWaves.square.samples[15 * kWaveTableExpansion] == 28835);
     check(kStandardWaves.square.samples[16 * kWaveTableExpansion] == -28835);
-    check(sizeof(kStandardWaves) == 4608);
+    check(sizeof(kStandardWaves) == 576);
 }
 
 void testSequenceAndLoop() {

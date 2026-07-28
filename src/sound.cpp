@@ -30,7 +30,8 @@ constexpr double kPhaseScale = 4294967296.0 / static_cast<double>(kAudioSampleRa
 } // namespace
 
 void Synthesizer::startVoice(std::size_t voiceIndex, const VoiceStart& start) noexcept {
-    if (voiceIndex >= voices_.size() || start.timbre == nullptr || start.timbre->wave == nullptr) {
+    if (voiceIndex >= voices_.size() || start.timbre == nullptr
+        || start.timbre->wave.samples == nullptr) {
         return;
     }
     auto& voice = voices_[voiceIndex];
@@ -200,8 +201,22 @@ float Synthesizer::bodyLevelAt(const NoiseVoice& noise, float time) noexcept {
 }
 
 void Synthesizer::renderBlock(AudioBlock& output) noexcept {
+    renderFrames(
+        &output,
+        [](void* context,
+           std::size_t frame,
+           std::int16_t left,
+           std::int16_t right) noexcept {
+            auto& block = *static_cast<AudioBlock*>(context);
+            block[frame * kAudioChannels] = left;
+            block[frame * kAudioChannels + 1u] = right;
+        });
+}
+
+void Synthesizer::renderFrames(void* context, AudioFrameWriter writer) noexcept {
+    if (writer == nullptr) return;
     struct BlockVoice {
-        const WaveTable* wave;
+        Waveform wave;
         std::uint32_t increment;
         float left;
         float right;
@@ -259,8 +274,9 @@ void Synthesizer::renderBlock(AudioBlock& output) noexcept {
             const auto& block = blockVoices[i];
             if (!block.active) continue;
             auto& voice = voices_[i];
-            const auto waveIndex = static_cast<std::size_t>(voice.phase >> 24U);
-            const auto sample = static_cast<float>(block.wave->samples[waveIndex]);
+            const auto waveIndex =
+                static_cast<std::size_t>(voice.phase >> block.wave.phaseShift);
+            const auto sample = static_cast<float>(block.wave.samples[waveIndex]);
             left += sample * block.left;
             right += sample * block.right;
             voice.phase += block.increment;
@@ -278,8 +294,7 @@ void Synthesizer::renderBlock(AudioBlock& output) noexcept {
             right += noiseSample * noiseRight + bodySample * bodyRight;
             noiseVoice_.bodyPhase += bodyIncrement;
         }
-        output[frame * 2] = saturate16(left);
-        output[frame * 2 + 1] = saturate16(right);
+        writer(context, frame, saturate16(left), saturate16(right));
     }
 
     for (auto& voice : voices_) {

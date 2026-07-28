@@ -30,6 +30,21 @@ constexpr std::uint32_t kEmptyPixelOffset = 0xffffffffU;
     return left == 0 || right <= limit / left;
 }
 
+[[nodiscard]] bool regionContains(const SpritePixelRegion* regions,
+                                  std::size_t regionCount,
+                                  std::uint32_t offset,
+                                  std::uint32_t size) noexcept {
+    for (std::size_t index = 0; index < regionCount; ++index) {
+        const auto& region = regions[index];
+        if (offset >= region.sourceOffset
+            && offset - region.sourceOffset <= region.size
+            && size <= region.size - (offset - region.sourceOffset)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 } // namespace
 
 SpriteAssetPackView::SpriteAssetPackView(const std::uint8_t* data, std::size_t size) noexcept {
@@ -59,8 +74,18 @@ bool SpriteAssetPackView::resetSplit(const std::uint8_t* data,
                                      std::size_t metadataSize,
                                      const ColorIndex* suppliedPixels,
                                      std::size_t suppliedPixelSize) noexcept {
+    const SpritePixelRegion region{0, suppliedPixels, suppliedPixelSize};
+    return resetSplitRegions(data, metadataSize, &region, 1);
+}
+
+bool SpriteAssetPackView::resetSplitRegions(
+    const std::uint8_t* data,
+    std::size_t metadataSize,
+    const SpritePixelRegion* regions,
+    std::size_t regionCount) noexcept {
     *this = SpriteAssetPackView{};
-    if (data == nullptr || suppliedPixels == nullptr || metadataSize < kHeaderSize
+    if (data == nullptr || regions == nullptr || regionCount == 0
+        || regionCount > pixelRegions_.size() || metadataSize < kHeaderSize
         || data[0] != 'P' || data[1] != 'T' || data[2] != 'S' || data[3] != 'P'
         || read16(data + 4) != 1 || read16(data + 6) != kHeaderSize
         || read16(data + 10) != kAssetSize) {
@@ -82,10 +107,20 @@ bool SpriteAssetPackView::resetSplit(const std::uint8_t* data,
     const auto frameTableEnd = assetTableEnd + static_cast<std::size_t>(frameCount) * kFrameSize;
     if (frameTableEnd > pixelDataOffset
         || pixelDataOffset - frameTableEnd > 3 || (pixelDataOffset & 3U) != 0
-        || pixelDataOffset > metadataSize
-        || pixelDataSize > suppliedPixelSize) {
+        || pixelDataOffset > metadataSize) {
         return false;
     }
+
+    std::size_t coveredPixelSize = 0;
+    for (std::size_t regionIndex = 0; regionIndex < regionCount; ++regionIndex) {
+        const auto& region = regions[regionIndex];
+        if (region.pixels == nullptr || region.sourceOffset != coveredPixelSize
+            || region.size > pixelDataSize - coveredPixelSize) {
+            return false;
+        }
+        coveredPixelSize += region.size;
+    }
+    if (coveredPixelSize != pixelDataSize) return false;
 
     const auto* frameTable = data + assetTableEnd;
     for (std::uint16_t assetIndex = 0; assetIndex < assetCount; ++assetIndex) {
@@ -119,6 +154,7 @@ bool SpriteAssetPackView::resetSplit(const std::uint8_t* data,
             const auto pixelCount = static_cast<std::uint32_t>(width) * height;
             if (pixelOffset == kEmptyPixelOffset || pixelOffset > pixelDataSize
                 || pixelCount > pixelDataSize - pixelOffset
+                || !regionContains(regions, regionCount, pixelOffset, pixelCount)
                 || static_cast<unsigned>(trimX) + width > logicalWidth
                 || static_cast<unsigned>(trimY) + height > logicalHeight) {
                 return false;
@@ -128,7 +164,10 @@ bool SpriteAssetPackView::resetSplit(const std::uint8_t* data,
 
     data_ = data;
     frameTable_ = frameTable;
-    pixelData_ = suppliedPixels;
+    for (std::size_t index = 0; index < regionCount; ++index) {
+        pixelRegions_[index] = regions[index];
+    }
+    pixelRegionCount_ = static_cast<std::uint8_t>(regionCount);
     assetCount_ = assetCount;
     return true;
 }
@@ -139,6 +178,17 @@ bool SpriteAssetPackView::valid() const noexcept {
 
 std::uint16_t SpriteAssetPackView::assetCount() const noexcept {
     return assetCount_;
+}
+
+const ColorIndex* SpriteAssetPackView::pixelsAt(std::uint32_t offset) const noexcept {
+    for (std::size_t index = 0; index < pixelRegionCount_; ++index) {
+        const auto& region = pixelRegions_[index];
+        if (offset >= region.sourceOffset
+            && offset - region.sourceOffset < region.size) {
+            return region.pixels + (offset - region.sourceOffset);
+        }
+    }
+    return nullptr;
 }
 
 bool SpriteAssetPackView::assetInfo(std::uint16_t assetIndex,
@@ -174,7 +224,7 @@ bool SpriteAssetPackView::frame(std::uint16_t assetIndex,
     result.trimY = source[5];
     result.width = source[6];
     result.height = source[7];
-    result.pixels = pixelOffset == kEmptyPixelOffset ? nullptr : pixelData_ + pixelOffset;
+    result.pixels = pixelOffset == kEmptyPixelOffset ? nullptr : pixelsAt(pixelOffset);
     return true;
 }
 

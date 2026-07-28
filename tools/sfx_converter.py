@@ -53,7 +53,7 @@ def main():
             else:
                 initializer = f"pixel_twins::WaveTable{{{{{values}}}}}"
             definitions.append(
-                f"namespace {{ PIXEL_TWINS_ASSET_SRAM const pixel_twins::WaveTable "
+                f"namespace {{ const pixel_twins::WaveTable "
                 f"k{name}Wave = {initializer}; }}")
             wave_ref = f"k{name}Wave"
         else:

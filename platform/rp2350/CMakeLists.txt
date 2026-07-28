@@ -32,6 +32,7 @@ endif()
 
 # ボード固有ドライバが共通コードとPico SDKに依存するための境界。
 add_library(pixel_twins_rp2350
+    pwm_audio.cpp
     led_panel.cpp
     sony_hid.cpp
     usb_controller.cpp
@@ -47,7 +48,7 @@ target_link_libraries(pixel_twins_rp2350
     PUBLIC pixel_twins::pixel_twins pico_stdlib
     PRIVATE tinyusb_common
     PRIVATE pico_pio_usb
-    PRIVATE hardware_clocks hardware_dma hardware_gpio hardware_pio
+    PRIVATE hardware_clocks hardware_dma hardware_gpio hardware_irq hardware_pio hardware_pwm
 )
 target_include_directories(pixel_twins_rp2350 PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

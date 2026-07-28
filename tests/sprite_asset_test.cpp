@@ -74,6 +74,18 @@ int main() {
     SpriteAssetPackView split;
     check(split.resetSplit(kPack.data(), 52, kPack.data() + 52, 2));
     check(split.frame(0, 0, frame) && frame.pixels[0] == 5);
+    const std::array<std::uint8_t, 1> firstPixel{{5}};
+    const std::array<std::uint8_t, 1> secondPixel{{5}};
+    const std::array<SpritePixelRegion, 2> regions{{
+        {0, firstPixel.data(), firstPixel.size()},
+        {1, secondPixel.data(), secondPixel.size()},
+    }};
+    check(!split.resetSplitRegions(
+        kPack.data(), 52, regions.data(), regions.size()));
+    auto brokenRegions = regions;
+    brokenRegions[1].sourceOffset = 2;
+    check(!split.resetSplitRegions(
+        kPack.data(), 52, brokenRegions.data(), brokenRegions.size()));
 
     SpriteAssetPackView truncated{kPack.data(), kPack.size() - 1};
     check(!truncated.valid());
