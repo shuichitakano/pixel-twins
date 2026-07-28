@@ -31,7 +31,7 @@ constexpr double kPhaseScale = 4294967296.0 / static_cast<double>(kAudioSampleRa
 
 void Synthesizer::startVoice(std::size_t voiceIndex, const VoiceStart& start) noexcept {
     if (voiceIndex >= voices_.size() || start.timbre == nullptr
-        || start.timbre->wave.samples == nullptr) {
+        || start.timbre->wave == nullptr) {
         return;
     }
     auto& voice = voices_[voiceIndex];
@@ -216,7 +216,7 @@ void Synthesizer::renderBlock(AudioBlock& output) noexcept {
 void Synthesizer::renderFrames(void* context, AudioFrameWriter writer) noexcept {
     if (writer == nullptr) return;
     struct BlockVoice {
-        Waveform wave;
+        const WaveTable* wave;
         std::uint32_t increment;
         float left;
         float right;
@@ -274,9 +274,9 @@ void Synthesizer::renderFrames(void* context, AudioFrameWriter writer) noexcept 
             const auto& block = blockVoices[i];
             if (!block.active) continue;
             auto& voice = voices_[i];
-            const auto waveIndex =
-                static_cast<std::size_t>(voice.phase >> block.wave.phaseShift);
-            const auto sample = static_cast<float>(block.wave.samples[waveIndex]);
+            const auto waveIndex = static_cast<std::size_t>(voice.phase >> 24U);
+            const auto sample =
+                static_cast<float>(block.wave->samples[waveIndex]) * 256.0F;
             left += sample * block.left;
             right += sample * block.right;
             voice.phase += block.increment;

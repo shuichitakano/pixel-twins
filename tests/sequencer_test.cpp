@@ -12,10 +12,10 @@ using namespace pixel_twins;
 
 void testStandardWaves() {
     check(kStandardWaves.sine.samples[0] == 0);
-    check(kStandardWaves.sine.samples[8 * kWaveTableExpansion] == 32767);
-    check(kStandardWaves.square.samples[15 * kWaveTableExpansion] == 28835);
-    check(kStandardWaves.square.samples[16 * kWaveTableExpansion] == -28835);
-    check(sizeof(kStandardWaves) == 576);
+    check(kStandardWaves.sine.samples[8 * kWaveTableExpansion] == 127);
+    check(kStandardWaves.square.samples[15 * kWaveTableExpansion] == 112);
+    check(kStandardWaves.square.samples[16 * kWaveTableExpansion] == -112);
+    check(sizeof(kStandardWaves) == 2304);
 }
 
 void testSequenceAndLoop() {
@@ -50,13 +50,13 @@ void testSequenceAndLoop() {
     sequencer.advanceBlock(synth);
     check(synth.isVoiceActive(0));
     synth.renderBlock(output);
-    check(output[0] == 28835);
+    check(output[0] == 28672);
     check(sequencer.blockPosition() == 1);
 
     sequencer.advanceBlock(synth);
     check(sequencer.blockPosition() == 1);
     synth.renderBlock(output);
-    check(output[0] == 28835);
+    check(output[0] == 28672);
 
     sequencer.stop(synth);
     check(!sequencer.isPlaying());
@@ -106,7 +106,7 @@ void testTrackMuteMask() {
     sequencer.setTrackMuteMask(0U, synth);
     sequencer.advanceBlock(synth);
     synth.renderBlock(output);
-    check(output[0] == 28835);
+    check(output[0] == 28672);
 
     sequencer.setTrackMuteMask(1U << 1U, synth);
     check(!synth.isVoiceActive(0));

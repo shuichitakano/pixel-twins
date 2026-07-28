@@ -23,8 +23,9 @@ bool SfxRequestQueue::tryPop(SfxRequest& request) noexcept {
 }
 
 bool AudioSystem::playSfx(const SfxRequest& request) noexcept {
-    if (request.voice.timbre == nullptr
-        || request.voice.timbre->wave.samples == nullptr) return false;
+    if (request.voice.timbre == nullptr || request.voice.timbre->wave == nullptr) {
+        return false;
+    }
     return sfxRequests_.tryPush(request);
 }
 
