@@ -2,6 +2,12 @@
 
 namespace pixel_twins {
 
+namespace {
+
+constexpr std::int16_t kDirectionalAxisThreshold = 8000;
+
+} // namespace
+
 bool ControllerState::isHeld(ControllerButton button) const noexcept {
     return (held & buttonMask(button)) != 0;
 }
@@ -18,7 +24,17 @@ void Controllers::update(const std::array<ControllerSample, kControllerCount>& s
     for (std::size_t i = 0; i < kControllerCount; ++i) {
         auto& state = states_[i];
         const auto previous = state.held;
-        const auto current = samples[i].buttons;
+        auto current = samples[i].buttons;
+        if (samples[i].x <= -kDirectionalAxisThreshold) {
+            current |= buttonMask(ControllerButton::dpadLeft);
+        } else if (samples[i].x >= kDirectionalAxisThreshold) {
+            current |= buttonMask(ControllerButton::dpadRight);
+        }
+        if (samples[i].y <= -kDirectionalAxisThreshold) {
+            current |= buttonMask(ControllerButton::dpadUp);
+        } else if (samples[i].y >= kDirectionalAxisThreshold) {
+            current |= buttonMask(ControllerButton::dpadDown);
+        }
         state.x = samples[i].x;
         state.y = samples[i].y;
         state.held = current;
