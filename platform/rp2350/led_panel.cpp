@@ -184,6 +184,7 @@ LedPanelDriver::LedPanelDriver() noexcept
       dataTransferComplete_(false),
       pwmScanComplete_(false),
       presenting_(false),
+      holding_(false),
       initialized_(false) {}
 
 void LedPanelDriver::initialize() noexcept {
@@ -414,7 +415,7 @@ void LedPanelDriver::startPwmScan() noexcept {
 
 bool LedPanelDriver::startPresent(const PixelBuffer& pixels) noexcept {
     hard_assert(initialized_);
-    if (presenting_) return false;
+    if (presenting_ || holding_) return false;
 
     const auto activeStartUs = time_us_32();
     sendCommands();
@@ -438,6 +439,27 @@ bool LedPanelDriver::startPresent(const PixelBuffer& pixels) noexcept {
     const auto secondLineUs = time_us_32() - secondLineStartUs;
     presentActiveUs_ += secondLineUs;
     totalPresentActiveUs_ += secondLineUs;
+    return true;
+}
+
+bool LedPanelDriver::startHoldScan() noexcept {
+    hard_assert(initialized_);
+    if (presenting_ || holding_) return false;
+
+    auto config = dma_channel_get_default_config(pwmDmaChannel_);
+    channel_config_set_transfer_data_size(&config, DMA_SIZE_32);
+    channel_config_set_read_increment(&config, true);
+    channel_config_set_write_increment(&config, false);
+    channel_config_set_dreq(
+        &config, pio_get_dreq(kPwmPio, kPwmStateMachine, true));
+    holding_ = true;
+    dma_channel_configure(
+        pwmDmaChannel_,
+        &config,
+        &kPwmPio->txf[kPwmStateMachine],
+        pwmWords_.data() + pwmWords_.size() - 2,
+        2,
+        true);
     return true;
 }
 
@@ -468,6 +490,10 @@ void LedPanelDriver::handleDataDmaIrq() noexcept {
 void LedPanelDriver::handlePwmIrq() noexcept {
     if (!pio_interrupt_get(kPwmPio, 0)) return;
     pio_interrupt_clear(kPwmPio, 0);
+    if (holding_) {
+        holding_ = false;
+        return;
+    }
     if (!presenting_) return;
     pwmScanComplete_ = true;
     finishPresentIfReady();

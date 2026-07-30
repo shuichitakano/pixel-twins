@@ -17,6 +17,8 @@ public:
     void setPalette(const Palette& palette) noexcept PIXEL_TWINS_SRAM;
     [[nodiscard]] bool startPresent(const PixelBuffer& pixels) noexcept PIXEL_TWINS_SRAM;
     [[nodiscard]] bool presenting() const noexcept { return presenting_; }
+    [[nodiscard]] bool startHoldScan() noexcept PIXEL_TWINS_SRAM;
+    [[nodiscard]] bool holding() const noexcept { return holding_; }
     void present(const PixelBuffer& pixels) noexcept PIXEL_TWINS_SRAM;
     [[nodiscard]] std::uint32_t lastPresentActiveUs() const noexcept {
         return lastPresentActiveUs_;
@@ -71,6 +73,7 @@ private:
     volatile bool dataTransferComplete_;
     volatile bool pwmScanComplete_;
     volatile bool presenting_;
+    volatile bool holding_;
     bool initialized_;
 };
 
