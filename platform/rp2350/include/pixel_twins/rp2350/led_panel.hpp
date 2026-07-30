@@ -21,6 +21,9 @@ public:
     [[nodiscard]] std::uint32_t lastPresentActiveUs() const noexcept {
         return lastPresentActiveUs_;
     }
+    [[nodiscard]] std::uint32_t totalPresentActiveUs() const noexcept {
+        return totalPresentActiveUs_;
+    }
 
 private:
     static constexpr std::size_t kSequenceWords = 8;
@@ -60,6 +63,7 @@ private:
     std::uint32_t dataProgramOffset_;
     std::uint32_t pwmProgramOffset_;
     std::uint32_t lastPresentActiveUs_;
+    volatile std::uint32_t totalPresentActiveUs_;
     const PixelBuffer* presentingPixels_;
     std::size_t nextTransferLine_;
     std::size_t nextBuildLine_;

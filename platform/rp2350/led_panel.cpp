@@ -176,6 +176,7 @@ LedPanelDriver::LedPanelDriver() noexcept
       dataProgramOffset_(0),
       pwmProgramOffset_(0),
       lastPresentActiveUs_(0),
+      totalPresentActiveUs_(0),
       presentingPixels_(nullptr),
       nextTransferLine_(0),
       nextBuildLine_(0),
@@ -423,6 +424,7 @@ bool LedPanelDriver::startPresent(const PixelBuffer& pixels) noexcept {
     nextTransferLine_ = 1;
     nextBuildLine_ = 2;
     presentActiveUs_ = time_us_32() - activeStartUs;
+    totalPresentActiveUs_ += presentActiveUs_;
     dataTransferComplete_ = false;
     pwmScanComplete_ = false;
     presenting_ = true;
@@ -433,7 +435,9 @@ bool LedPanelDriver::startPresent(const PixelBuffer& pixels) noexcept {
 
     const auto secondLineStartUs = time_us_32();
     buildLineBuffer(lineBuffers_[1], pixels, 1);
-    presentActiveUs_ += time_us_32() - secondLineStartUs;
+    const auto secondLineUs = time_us_32() - secondLineStartUs;
+    presentActiveUs_ += secondLineUs;
+    totalPresentActiveUs_ += secondLineUs;
     return true;
 }
 
@@ -451,7 +455,9 @@ void LedPanelDriver::handleDataDmaIrq() noexcept {
             buildLineBuffer(freeBuffer, *presentingPixels_, nextBuildLine_);
             ++nextBuildLine_;
         }
-        presentActiveUs_ += time_us_32() - activeStartUs;
+        const auto activeUs = time_us_32() - activeStartUs;
+        presentActiveUs_ += activeUs;
+        totalPresentActiveUs_ += activeUs;
         return;
     }
 
