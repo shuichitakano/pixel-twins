@@ -41,7 +41,7 @@ constexpr std::uint32_t kDataClocksPerBlockMinusTwo =
     kDriverCascadeCount * kBitsPerPixel - 2;
 constexpr std::uint32_t kOutputBlocksMinusOne = kDriverOutputCount - 1;
 constexpr std::uint32_t kPwmClocksPerLine = 74;
-constexpr std::uint32_t kMinimumPwmScansPerFrame = 35;
+constexpr std::uint32_t kPwmScansPerFrame = 35;
 
 constexpr std::uint16_t kRedLaneMask =
     (1u << 0) | (1u << 1) | (1u << 6) | (1u << 7);
@@ -182,7 +182,7 @@ LedPanelDriver::LedPanelDriver() noexcept
       nextBuildLine_(0),
       presentActiveUs_(0),
       dataTransferComplete_(false),
-      pwmScansSinceFlip_(0),
+      pwmScanComplete_(false),
       presenting_(false),
       initialized_(false) {}
 
@@ -283,7 +283,7 @@ void LedPanelDriver::initialize() noexcept {
     const auto pwmWord =
         ((static_cast<std::uint32_t>(kScanLines) - 2u) << 16u) |
         (kPwmClocksPerLine - 1u);
-    pwmWords_[0] = pwmWord;
+    std::fill_n(pwmWords_.begin(), kPwmScansPerFrame, pwmWord);
     pwmWords_.back() = 0;
 
     instance_ = this;
@@ -301,10 +301,6 @@ void LedPanelDriver::initialize() noexcept {
     irq_set_priority(kPwmIrq, kLedIrqPriority);
     irq_set_enabled(kPwmIrq, true);
 
-    // 初期設定後は60ライン単位のPWM走査を途切れず反復する。
-    // 新しい画面はGS6263の書込側バッファへ転送し、走査境界でのみflipする。
-    sendCommands();
-    startPwmScan();
     initialized_ = true;
 }
 
@@ -421,6 +417,7 @@ bool LedPanelDriver::startPresent(const PixelBuffer& pixels) noexcept {
     if (presenting_) return false;
 
     const auto activeStartUs = time_us_32();
+    sendCommands();
     buildLineBuffer(lineBuffers_[0], pixels, 0);
 
     presentingPixels_ = &pixels;
@@ -429,9 +426,11 @@ bool LedPanelDriver::startPresent(const PixelBuffer& pixels) noexcept {
     presentActiveUs_ = time_us_32() - activeStartUs;
     totalPresentActiveUs_ += presentActiveUs_;
     dataTransferComplete_ = false;
+    pwmScanComplete_ = false;
     presenting_ = true;
 
     pio_sm_set_enabled(kDataPio, kDataStateMachine, true);
+    startPwmScan();
     startDataTransfer(lineBuffers_[0]);
 
     const auto secondLineStartUs = time_us_32();
@@ -463,37 +462,23 @@ void LedPanelDriver::handleDataDmaIrq() noexcept {
     }
 
     dataTransferComplete_ = true;
+    finishPresentIfReady();
 }
 
 void LedPanelDriver::handlePwmIrq() noexcept {
     if (!pio_interrupt_get(kPwmPio, 0)) return;
-    const auto activeStartUs = time_us_32();
     pio_interrupt_clear(kPwmPio, 0);
-    ++pwmScansSinceFlip_;
-    auto completedPresent = false;
+    if (!presenting_) return;
+    pwmScanComplete_ = true;
+    finishPresentIfReady();
+}
 
-    if (presenting_ && dataTransferComplete_
-        && pwmScansSinceFlip_ >= kMinimumPwmScansPerFrame) {
-        // DMA完了時点ではPIO FIFOに末尾データが残り得る。書込側の全60ラインが
-        // 完了するまで待ち、ライン出力が無効な走査境界でだけVSyncを送る。
-        waitForProgramIdle(kDataPio, kDataStateMachine, dataProgramOffset_);
-        pio_sm_set_enabled(kDataPio, kDataStateMachine, false);
-        sendCommands();
-        presentingPixels_ = nullptr;
-        pwmScansSinceFlip_ = 0;
-        presenting_ = false;
-        completedPresent = true;
-    }
-
-    // 新フレームが未完成でも旧表示バッファのPWM走査は継続する。
-    startPwmScan();
-    const auto activeUs = time_us_32() - activeStartUs;
-    totalPresentActiveUs_ += activeUs;
-    if (presenting_) {
-        presentActiveUs_ += activeUs;
-    } else if (completedPresent) {
-        lastPresentActiveUs_ = presentActiveUs_ + activeUs;
-    }
+void LedPanelDriver::finishPresentIfReady() noexcept {
+    if (!dataTransferComplete_ || !pwmScanComplete_) return;
+    pio_sm_set_enabled(kDataPio, kDataStateMachine, false);
+    presentingPixels_ = nullptr;
+    lastPresentActiveUs_ = presentActiveUs_;
+    presenting_ = false;
 }
 
 void LedPanelDriver::dmaIrqHandler() {
