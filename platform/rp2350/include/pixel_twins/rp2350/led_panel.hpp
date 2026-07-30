@@ -61,7 +61,8 @@ private:
     std::uint32_t pwmProgramOffset_;
     std::uint32_t lastPresentActiveUs_;
     const PixelBuffer* presentingPixels_;
-    std::size_t nextScanLine_;
+    std::size_t nextTransferLine_;
+    std::size_t nextBuildLine_;
     std::uint32_t presentActiveUs_;
     volatile bool dataTransferComplete_;
     volatile bool pwmScanComplete_;

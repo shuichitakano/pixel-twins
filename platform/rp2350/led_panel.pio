@@ -49,6 +49,11 @@ data_loop:
 .program led_pwm
 .side_set 1
 
+pwm_frame_end:
+    ; 35周の後に一度だけCPUへフレーム完了を通知する。
+    irq 0                     side 0
+
+.wrap_target
     out isr, 16               side 0 ; PWMクロック数 - 1
     out y, 16                 side 0 ; ライン数 - 2
     ; DMA列末尾のライン数0ワードはフレーム終端マーカー。
@@ -77,7 +82,4 @@ pwm_last_loop:
     set pins, 0b111           side 0 [15]
     ; ライン0を選択したまま、次のFIFOデータまで出力を無効にする。
     set pins, 0b010           side 0
-
-pwm_frame_end:
-    ; 35周の後に一度だけCPUへフレーム完了を通知する。
-    irq 0                     side 0
+.wrap

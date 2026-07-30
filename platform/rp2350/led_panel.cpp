@@ -177,7 +177,8 @@ LedPanelDriver::LedPanelDriver() noexcept
       pwmProgramOffset_(0),
       lastPresentActiveUs_(0),
       presentingPixels_(nullptr),
-      nextScanLine_(0),
+      nextTransferLine_(0),
+      nextBuildLine_(0),
       presentActiveUs_(0),
       dataTransferComplete_(false),
       pwmScanComplete_(false),
@@ -419,7 +420,8 @@ bool LedPanelDriver::startPresent(const PixelBuffer& pixels) noexcept {
     buildLineBuffer(lineBuffers_[0], pixels, 0);
 
     presentingPixels_ = &pixels;
-    nextScanLine_ = 1;
+    nextTransferLine_ = 1;
+    nextBuildLine_ = 2;
     presentActiveUs_ = time_us_32() - activeStartUs;
     dataTransferComplete_ = false;
     pwmScanComplete_ = false;
@@ -428,6 +430,10 @@ bool LedPanelDriver::startPresent(const PixelBuffer& pixels) noexcept {
     pio_sm_set_enabled(kDataPio, kDataStateMachine, true);
     startPwmScan();
     startDataTransfer(lineBuffers_[0]);
+
+    const auto secondLineStartUs = time_us_32();
+    buildLineBuffer(lineBuffers_[1], pixels, 1);
+    presentActiveUs_ += time_us_32() - secondLineStartUs;
     return true;
 }
 
@@ -436,12 +442,15 @@ void LedPanelDriver::handleDataDmaIrq() noexcept {
     dma_irqn_acknowledge_channel(kDataDmaIrqIndex, dataDmaChannel_);
     if (!presenting_ || presentingPixels_ == nullptr) return;
 
-    if (nextScanLine_ < kScanLines) {
+    if (nextTransferLine_ < kScanLines) {
         const auto activeStartUs = time_us_32();
-        auto& nextBuffer = lineBuffers_[nextScanLine_ & 1u];
-        buildLineBuffer(nextBuffer, *presentingPixels_, nextScanLine_);
-        ++nextScanLine_;
-        startDataTransfer(nextBuffer);
+        startDataTransfer(lineBuffers_[nextTransferLine_ & 1u]);
+        ++nextTransferLine_;
+        if (nextBuildLine_ < kScanLines) {
+            auto& freeBuffer = lineBuffers_[nextBuildLine_ & 1u];
+            buildLineBuffer(freeBuffer, *presentingPixels_, nextBuildLine_);
+            ++nextBuildLine_;
+        }
         presentActiveUs_ += time_us_32() - activeStartUs;
         return;
     }
