@@ -14,6 +14,8 @@ public:
     LedPanelDriver() noexcept;
 
     void initialize() noexcept;
+    void setGamma(float gamma) noexcept;
+    [[nodiscard]] float gamma() const noexcept { return gamma_; }
     void setPalette(const Palette& palette) noexcept PIXEL_TWINS_SRAM;
     [[nodiscard]] bool startPresent(const PixelBuffer& pixels) noexcept PIXEL_TWINS_SRAM;
     [[nodiscard]] bool presenting() const noexcept { return presenting_; }
@@ -78,6 +80,7 @@ private:
     volatile bool holding_;
     volatile bool holdStopRequested_;
     bool initialized_;
+    float gamma_;
 };
 
 } // namespace pixel_twins::rp2350

@@ -26,6 +26,8 @@ public:
     [[nodiscard]] bool stopBgm() noexcept;
     [[nodiscard]] bool stopAll() noexcept;
     [[nodiscard]] bool playSfx(const SfxRequest& request) noexcept;
+    void suspendForFlash() noexcept;
+    void resumeAfterFlash() noexcept;
 
     [[nodiscard]] const Diagnostics& diagnostics() const noexcept {
         return diagnostics_;
@@ -75,6 +77,7 @@ private:
     Diagnostics diagnostics_{};
     std::uint16_t pwmTop_ = 0;
     bool initialized_ = false;
+    bool flashSuspended_ = false;
 };
 
 } // namespace pixel_twins::rp2350

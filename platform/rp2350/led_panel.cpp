@@ -123,9 +123,10 @@ bool appendSimpleCommand(std::array<std::uint32_t, Capacity>& destination,
         destination, usedWords, lowClocks + highClocks, highClocks, false, 0, 0, 0);
 }
 
-[[nodiscard]] std::uint16_t gammaTo12Bit(std::uint8_t value) noexcept {
+[[nodiscard]] std::uint16_t gammaTo12Bit(
+        std::uint8_t value, float gamma) noexcept {
     const auto normalized = static_cast<float>(value) / 255.0f;
-    const auto corrected = std::pow(normalized, 2.2f);
+    const auto corrected = std::pow(normalized, gamma);
     return static_cast<std::uint16_t>(corrected * 4095.0f + 0.5f);
 }
 
@@ -186,7 +187,8 @@ LedPanelDriver::LedPanelDriver() noexcept
       presenting_(false),
       holding_(false),
       holdStopRequested_(false),
-      initialized_(false) {}
+      initialized_(false),
+      gamma_(2.2F) {}
 
 void LedPanelDriver::initialize() noexcept {
     if (initialized_) return;
@@ -306,14 +308,18 @@ void LedPanelDriver::initialize() noexcept {
     initialized_ = true;
 }
 
+void LedPanelDriver::setGamma(float gamma) noexcept {
+    gamma_ = std::clamp(gamma, 1.0F, 3.5F);
+}
+
 void LedPanelDriver::setPalette(const Palette& palette) noexcept {
     for (std::size_t color = 0; color < palette.size(); ++color) {
         auto& sequence = colorSequences_[color];
         sequence.fill(0);
 
-        const auto red = gammaTo12Bit(palette[color].r);
-        const auto green = gammaTo12Bit(palette[color].g);
-        const auto blue = gammaTo12Bit(palette[color].b);
+        const auto red = gammaTo12Bit(palette[color].r, gamma_);
+        const auto green = gammaTo12Bit(palette[color].g, gamma_);
+        const auto blue = gammaTo12Bit(palette[color].b, gamma_);
 
         for (std::size_t bit = 0; bit < kBrightnessBits; ++bit) {
             const auto mask = static_cast<std::uint16_t>(

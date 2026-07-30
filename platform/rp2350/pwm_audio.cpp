@@ -138,6 +138,59 @@ bool PwmAudioPlayer::playSfx(const SfxRequest& request) noexcept {
     return audioSystem_.playSfx(request);
 }
 
+void PwmAudioPlayer::suspendForFlash() noexcept {
+    if (!initialized_ || flashSuspended_) return;
+    constexpr auto leftPin = board::kAudioPwmLeftPin;
+    constexpr auto rightPin = board::kAudioPwmRightPin;
+    const auto leftSlice = pwm_gpio_to_slice_num(leftPin);
+    const auto rightSlice = pwm_gpio_to_slice_num(rightPin);
+    const auto leftChannel = pwm_gpio_to_channel(leftPin);
+    const auto rightChannel = pwm_gpio_to_channel(rightPin);
+
+    irq_set_enabled(kAudioDmaIrq, false);
+    pwm_set_enabled(leftSlice, false);
+    pwm_set_enabled(rightSlice, false);
+    for (std::size_t index = 0; index < kBufferCount; ++index) {
+        dma_channel_abort(leftDmaChannels_[index]);
+        dma_channel_abort(rightDmaChannels_[index]);
+        dma_irqn_acknowledge_channel(
+            kAudioDmaIrqIndex, rightDmaChannels_[index]);
+    }
+    const auto midpoint = static_cast<std::uint16_t>(
+        (static_cast<std::uint32_t>(pwmTop_) + 1u) / 2u);
+    pwm_set_chan_level(leftSlice, leftChannel, midpoint);
+    pwm_set_chan_level(rightSlice, rightChannel, midpoint);
+    flashSuspended_ = true;
+}
+
+void PwmAudioPlayer::resumeAfterFlash() noexcept {
+    if (!initialized_ || !flashSuspended_) return;
+    constexpr auto leftPin = board::kAudioPwmLeftPin;
+    constexpr auto rightPin = board::kAudioPwmRightPin;
+    const auto leftSlice = pwm_gpio_to_slice_num(leftPin);
+    const auto rightSlice = pwm_gpio_to_slice_num(rightPin);
+    const auto leftChannel = pwm_gpio_to_channel(leftPin);
+    const auto rightChannel = pwm_gpio_to_channel(rightPin);
+    for (std::size_t index = 0; index < kBufferCount; ++index) {
+        const auto next = (index + 1u) & 1u;
+        configureDmaChannel(
+            leftDmaChannels_[index], leftDmaChannels_[next],
+            leftSlice, leftChannel, leftBuffers_[index]);
+        configureDmaChannel(
+            rightDmaChannels_[index], rightDmaChannels_[next],
+            rightSlice, rightChannel, rightBuffers_[index]);
+        dma_irqn_acknowledge_channel(
+            kAudioDmaIrqIndex, rightDmaChannels_[index]);
+    }
+    pwm_set_counter(leftSlice, 0);
+    pwm_set_counter(rightSlice, 0);
+    dma_start_channel_mask(
+        (1u << leftDmaChannels_[0]) | (1u << rightDmaChannels_[0]));
+    pwm_set_mask_enabled((1u << leftSlice) | (1u << rightSlice));
+    flashSuspended_ = false;
+    irq_set_enabled(kAudioDmaIrq, true);
+}
+
 bool PwmAudioPlayer::enqueue(Command command) noexcept {
     const auto write = commandWritePosition_.load(std::memory_order_relaxed);
     const auto read = commandReadPosition_.load(std::memory_order_acquire);
