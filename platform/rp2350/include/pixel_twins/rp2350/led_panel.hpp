@@ -19,6 +19,7 @@ public:
     [[nodiscard]] bool presenting() const noexcept { return presenting_; }
     [[nodiscard]] bool startHoldScan() noexcept PIXEL_TWINS_SRAM;
     [[nodiscard]] bool holding() const noexcept { return holding_; }
+    void requestHoldStop() noexcept { holdStopRequested_ = true; }
     void present(const PixelBuffer& pixels) noexcept PIXEL_TWINS_SRAM;
     [[nodiscard]] std::uint32_t lastPresentActiveUs() const noexcept {
         return lastPresentActiveUs_;
@@ -44,6 +45,7 @@ private:
     void startDataTransfer(const LineBuffer& buffer) noexcept PIXEL_TWINS_SRAM;
     void sendCommands() noexcept PIXEL_TWINS_SRAM;
     void startPwmScan() noexcept PIXEL_TWINS_SRAM;
+    void startSinglePwmScan() noexcept PIXEL_TWINS_SRAM;
     void handleDataDmaIrq() noexcept PIXEL_TWINS_SRAM;
     void handlePwmIrq() noexcept PIXEL_TWINS_SRAM;
     void finishPresentIfReady() noexcept PIXEL_TWINS_SRAM;
@@ -74,6 +76,7 @@ private:
     volatile bool pwmScanComplete_;
     volatile bool presenting_;
     volatile bool holding_;
+    volatile bool holdStopRequested_;
     bool initialized_;
 };
 

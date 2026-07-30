@@ -185,6 +185,7 @@ LedPanelDriver::LedPanelDriver() noexcept
       pwmScanComplete_(false),
       presenting_(false),
       holding_(false),
+      holdStopRequested_(false),
       initialized_(false) {}
 
 void LedPanelDriver::initialize() noexcept {
@@ -413,11 +414,31 @@ void LedPanelDriver::startPwmScan() noexcept {
         true);
 }
 
+void LedPanelDriver::startSinglePwmScan() noexcept {
+    auto config = dma_channel_get_default_config(pwmDmaChannel_);
+    channel_config_set_transfer_data_size(&config, DMA_SIZE_32);
+    channel_config_set_read_increment(&config, true);
+    channel_config_set_write_increment(&config, false);
+    channel_config_set_dreq(
+        &config, pio_get_dreq(kPwmPio, kPwmStateMachine, true));
+    dma_channel_configure(
+        pwmDmaChannel_,
+        &config,
+        &kPwmPio->txf[kPwmStateMachine],
+        pwmWords_.data() + pwmWords_.size() - 2,
+        2,
+        true);
+}
+
 bool LedPanelDriver::startPresent(const PixelBuffer& pixels) noexcept {
     hard_assert(initialized_);
     if (presenting_ || holding_) return false;
 
     const auto activeStartUs = time_us_32();
+    // GS6263は輝度転送後もidle DCLKでPWM/ライン進行を維持する。
+    // コマンドSMとGPIOを共有するため、VSync送出の直前にだけ停止する。
+    waitForProgramIdle(kDataPio, kDataStateMachine, dataProgramOffset_);
+    pio_sm_set_enabled(kDataPio, kDataStateMachine, false);
     sendCommands();
     buildLineBuffer(lineBuffers_[0], pixels, 0);
 
@@ -446,20 +467,9 @@ bool LedPanelDriver::startHoldScan() noexcept {
     hard_assert(initialized_);
     if (presenting_ || holding_) return false;
 
-    auto config = dma_channel_get_default_config(pwmDmaChannel_);
-    channel_config_set_transfer_data_size(&config, DMA_SIZE_32);
-    channel_config_set_read_increment(&config, true);
-    channel_config_set_write_increment(&config, false);
-    channel_config_set_dreq(
-        &config, pio_get_dreq(kPwmPio, kPwmStateMachine, true));
     holding_ = true;
-    dma_channel_configure(
-        pwmDmaChannel_,
-        &config,
-        &kPwmPio->txf[kPwmStateMachine],
-        pwmWords_.data() + pwmWords_.size() - 2,
-        2,
-        true);
+    holdStopRequested_ = false;
+    startSinglePwmScan();
     return true;
 }
 
@@ -491,7 +501,14 @@ void LedPanelDriver::handlePwmIrq() noexcept {
     if (!pio_interrupt_get(kPwmPio, 0)) return;
     pio_interrupt_clear(kPwmPio, 0);
     if (holding_) {
-        holding_ = false;
+        if (holdStopRequested_) {
+            holdStopRequested_ = false;
+            holding_ = false;
+        } else {
+            // core 1が長いjobを実行中でもライン出力を無効のまま放置しない。
+            // 次の1走査をIRQ内から直ちに開始してPWMを連続させる。
+            startSinglePwmScan();
+        }
         return;
     }
     if (!presenting_) return;
@@ -501,7 +518,6 @@ void LedPanelDriver::handlePwmIrq() noexcept {
 
 void LedPanelDriver::finishPresentIfReady() noexcept {
     if (!dataTransferComplete_ || !pwmScanComplete_) return;
-    pio_sm_set_enabled(kDataPio, kDataStateMachine, false);
     presentingPixels_ = nullptr;
     lastPresentActiveUs_ = presentActiveUs_;
     presenting_ = false;
