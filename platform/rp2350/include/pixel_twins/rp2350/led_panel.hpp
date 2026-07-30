@@ -31,7 +31,7 @@ private:
     static constexpr std::size_t kLineBufferWords = 1 + kLineDataWords;
     static constexpr std::size_t kCommand0Capacity = 48;
     static constexpr std::size_t kCommand1Capacity = 512;
-    static constexpr std::size_t kPwmWordCount = 36;
+    static constexpr std::size_t kPwmWordCount = 2;
 
     using ColorSequence = std::array<std::uint32_t, kSequenceWords>;
     using LineBuffer = std::array<std::uint32_t, kLineBufferWords>;
@@ -44,7 +44,6 @@ private:
     void startPwmScan() noexcept PIXEL_TWINS_SRAM;
     void handleDataDmaIrq() noexcept PIXEL_TWINS_SRAM;
     void handlePwmIrq() noexcept PIXEL_TWINS_SRAM;
-    void finishPresentIfReady() noexcept PIXEL_TWINS_SRAM;
     static void dmaIrqHandler();
     static void pwmIrqHandler();
 
@@ -69,7 +68,7 @@ private:
     std::size_t nextBuildLine_;
     std::uint32_t presentActiveUs_;
     volatile bool dataTransferComplete_;
-    volatile bool pwmScanComplete_;
+    std::uint32_t pwmScansSinceFlip_;
     volatile bool presenting_;
     bool initialized_;
 };
