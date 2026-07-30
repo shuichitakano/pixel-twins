@@ -15,6 +15,10 @@ public:
     // core 0から高頻度に呼び、列挙とHID転送を進める。
     void task() noexcept;
 
+    // Flash書き込み前後でPIO USBの1ms SOFタイマーを張り直す。
+    void suspendPioHostForFlash() noexcept;
+    void resumePioHostAfterFlash() noexcept;
+
     // 最新の2台分を共通コントローラー状態へ反映する。
     void update(Controllers& controllers) noexcept;
 
