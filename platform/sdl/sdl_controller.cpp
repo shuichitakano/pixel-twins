@@ -50,6 +50,8 @@ void readGamepad(ControllerSample& sample, SDL_Gamepad* gamepad) noexcept {
               SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_START));
     setButton(sample.buttons, ControllerButton::back,
               SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_BACK));
+    setButton(sample.buttons, ControllerButton::system,
+              SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_GUIDE));
 
 }
 

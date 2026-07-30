@@ -43,9 +43,9 @@ void decodeButtons(std::uint8_t faceAndHat, std::uint8_t menu,
     setButton(sample.buttons, ControllerButton::choiceDown, (faceAndHat & 0x20u) != 0);
     setButton(sample.buttons, ControllerButton::choiceRight, (faceAndHat & 0x40u) != 0);
     setButton(sample.buttons, ControllerButton::choiceUp, (faceAndHat & 0x80u) != 0);
-    setButton(sample.buttons, ControllerButton::back,
-              (menu & 0x10u) != 0 || (system & 0x02u) != 0);
+    setButton(sample.buttons, ControllerButton::back, (menu & 0x10u) != 0);
     setButton(sample.buttons, ControllerButton::start, (menu & 0x20u) != 0);
+    setButton(sample.buttons, ControllerButton::system, (system & 0x01u) != 0);
     decodeHat(static_cast<std::uint8_t>(faceAndHat & 0x0fu), sample);
 }
 

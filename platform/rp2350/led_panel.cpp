@@ -9,6 +9,7 @@
 #include "hardware/gpio.h"
 #include "hardware/pio.h"
 #include "pico/assert.h"
+#include "pico/time.h"
 
 #include <algorithm>
 #include <array>
@@ -172,6 +173,7 @@ LedPanelDriver::LedPanelDriver() noexcept
       commandProgramOffset_(0),
       dataProgramOffset_(0),
       pwmProgramOffset_(0),
+      lastPresentActiveUs_(0),
       initialized_(false) {}
 
 void LedPanelDriver::initialize() noexcept {
@@ -411,6 +413,7 @@ void LedPanelDriver::waitForPwmScan() noexcept {
 
 void LedPanelDriver::present(const PixelBuffer& pixels) noexcept {
     hard_assert(initialized_);
+    const auto activeStartUs = time_us_32();
 
     sendCommands();
     pio_sm_set_enabled(kDataPio, kDataStateMachine, true);
@@ -427,6 +430,7 @@ void LedPanelDriver::present(const PixelBuffer& pixels) noexcept {
     }
 
     waitForDataTransfer();
+    lastPresentActiveUs_ = time_us_32() - activeStartUs;
     waitForPwmScan();
     pio_sm_set_enabled(kDataPio, kDataStateMachine, false);
 }

@@ -19,6 +19,7 @@ enum class ControllerButton : std::uint16_t {
     choiceDown = 1u << 7,
     start = 1u << 8,
     back = 1u << 9,
+    system = 1u << 10,
 };
 
 [[nodiscard]] constexpr std::uint16_t buttonMask(ControllerButton button) noexcept {

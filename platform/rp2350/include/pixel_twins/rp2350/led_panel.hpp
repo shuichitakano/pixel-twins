@@ -16,6 +16,9 @@ public:
     void initialize() noexcept;
     void setPalette(const Palette& palette) noexcept PIXEL_TWINS_SRAM;
     void present(const PixelBuffer& pixels) noexcept PIXEL_TWINS_SRAM;
+    [[nodiscard]] std::uint32_t lastPresentActiveUs() const noexcept {
+        return lastPresentActiveUs_;
+    }
 
 private:
     static constexpr std::size_t kSequenceWords = 8;
@@ -49,6 +52,7 @@ private:
     std::uint32_t commandProgramOffset_;
     std::uint32_t dataProgramOffset_;
     std::uint32_t pwmProgramOffset_;
+    std::uint32_t lastPresentActiveUs_;
     bool initialized_;
 };
 

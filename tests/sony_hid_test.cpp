@@ -44,12 +44,13 @@ void decodeDualShock4() {
     assert(held(sample, ControllerButton::choiceDown));
     assert(held(sample, ControllerButton::start));
     assert(held(sample, ControllerButton::back));
+    assert(!held(sample, ControllerButton::system));
 }
 
 void decodeDualSense() {
-    // ID, LX, LY, RX, RY, L2, R2, counter, hat+×, Options, neutral
+    // ID, LX, LY, RX, RY, L2, R2, counter, hat+×, Options, PS
     const std::array<std::uint8_t, 11> report{
-        1, 128, 128, 0, 0, 0, 0, 0, 0x24, 0x20, 0};
+        1, 128, 128, 0, 0, 0, 0, 0, 0x24, 0x20, 0x01};
     ControllerSample sample{};
     assert(decodeSonyUsbReport(
         SonyControllerKind::dualSense, report.data(), report.size(), sample));
@@ -59,6 +60,7 @@ void decodeDualSense() {
     assert(held(sample, ControllerButton::choiceDown));
     assert(held(sample, ControllerButton::start));
     assert(!held(sample, ControllerButton::back));
+    assert(held(sample, ControllerButton::system));
 }
 
 void rejectInvalidReportsWithoutChangingSample() {
