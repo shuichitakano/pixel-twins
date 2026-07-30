@@ -7,6 +7,7 @@
 #include "hardware/clocks.h"
 #include "hardware/dma.h"
 #include "hardware/gpio.h"
+#include "hardware/irq.h"
 #include "hardware/pio.h"
 #include "pico/assert.h"
 #include "pico/time.h"
@@ -25,6 +26,10 @@ PIO const kPwmPio = pio1;
 constexpr unsigned int kCommandStateMachine = 0;
 constexpr unsigned int kDataStateMachine = 1;
 constexpr unsigned int kPwmStateMachine = 0;
+constexpr unsigned int kDataDmaIrqIndex = 0;
+constexpr unsigned int kDataDmaIrq = DMA_IRQ_0;
+constexpr unsigned int kPwmIrq = PIO1_IRQ_0;
+constexpr std::uint8_t kLedIrqPriority = 0x80;
 
 constexpr std::size_t kPanelWidth = 160;
 constexpr std::size_t kScanLines = 60;
@@ -44,10 +49,6 @@ constexpr std::uint16_t kGreenLaneMask =
     (1u << 2) | (1u << 3) | (1u << 8) | (1u << 9);
 constexpr std::uint16_t kBlueLaneMask =
     (1u << 4) | (1u << 5) | (1u << 10) | (1u << 11);
-
-[[nodiscard]] constexpr std::uint32_t txStallMask(unsigned int stateMachine) noexcept {
-    return 1u << (PIO_FDEBUG_TXSTALL_LSB + stateMachine);
-}
 
 void waitForProgramIdle(PIO pio,
                         unsigned int stateMachine,
@@ -163,21 +164,29 @@ void configurePinElectricalCharacteristics() noexcept {
 
 } // namespace
 
+LedPanelDriver* LedPanelDriver::instance_ = nullptr;
+
 LedPanelDriver::LedPanelDriver() noexcept
     : command0Size_(0),
       command1Size_(0),
       dataDmaChannel_(-1),
       commandDmaChannel_(-1),
       pwmDmaChannel_(-1),
-      pwmWord_(0),
       commandProgramOffset_(0),
       dataProgramOffset_(0),
       pwmProgramOffset_(0),
       lastPresentActiveUs_(0),
+      presentingPixels_(nullptr),
+      nextScanLine_(0),
+      presentActiveUs_(0),
+      dataTransferComplete_(false),
+      pwmScanComplete_(false),
+      presenting_(false),
       initialized_(false) {}
 
 void LedPanelDriver::initialize() noexcept {
     if (initialized_) return;
+    hard_assert(instance_ == nullptr);
 
     commandProgramOffset_ = pio_add_program(kDataPio, &led_command_12_program);
     dataProgramOffset_ = pio_add_program(kDataPio, &led_data_12_program);
@@ -269,9 +278,27 @@ void LedPanelDriver::initialize() noexcept {
     hard_assert(appendCommand(
         command1_, command1Size_, 168, 2, true, 0x0000, 0x0000, 0x0000));
 
-    pwmWord_ =
+    const auto pwmWord =
         ((static_cast<std::uint32_t>(kScanLines) - 2u) << 16u) |
         (kPwmClocksPerLine - 1u);
+    std::fill_n(pwmWords_.begin(), kPwmScansPerFrame, pwmWord);
+    pwmWords_.back() = 0;
+
+    instance_ = this;
+    dma_irqn_set_channel_enabled(
+        kDataDmaIrqIndex, dataDmaChannel_, true);
+    irq_add_shared_handler(
+        kDataDmaIrq, dmaIrqHandler, PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);
+    irq_set_priority(kDataDmaIrq, kLedIrqPriority);
+    irq_set_enabled(kDataDmaIrq, true);
+
+    pio_interrupt_clear(kPwmPio, 0);
+    pio_set_irq0_source_enabled(kPwmPio, pis_interrupt0, true);
+    irq_add_shared_handler(
+        kPwmIrq, pwmIrqHandler, PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);
+    irq_set_priority(kPwmIrq, kLedIrqPriority);
+    irq_set_enabled(kPwmIrq, true);
+
     initialized_ = true;
 }
 
@@ -341,21 +368,6 @@ void LedPanelDriver::startDataTransfer(const LineBuffer& buffer) noexcept {
         true);
 }
 
-void LedPanelDriver::waitForDataTransfer() noexcept {
-    dma_channel_wait_for_finish_blocking(dataDmaChannel_);
-    while (!pio_sm_is_tx_fifo_empty(kDataPio, kDataStateMachine)) {
-        tight_loop_contents();
-    }
-
-    const auto idle0 = dataProgramOffset_;
-    const auto idle1 = dataProgramOffset_ + 1u;
-    while (true) {
-        const auto pc = pio_sm_get_pc(kDataPio, kDataStateMachine);
-        if (pc == idle0 || pc == idle1) break;
-        tight_loop_contents();
-    }
-}
-
 void LedPanelDriver::sendCommands() noexcept {
     const auto send = [this](const std::uint32_t* words, std::size_t size) {
         auto config = dma_channel_get_default_config(commandDmaChannel_);
@@ -385,7 +397,7 @@ void LedPanelDriver::sendCommands() noexcept {
 void LedPanelDriver::startPwmScan() noexcept {
     auto config = dma_channel_get_default_config(pwmDmaChannel_);
     channel_config_set_transfer_data_size(&config, DMA_SIZE_32);
-    channel_config_set_read_increment(&config, false);
+    channel_config_set_read_increment(&config, true);
     channel_config_set_write_increment(&config, false);
     channel_config_set_dreq(
         &config, pio_get_dreq(kPwmPio, kPwmStateMachine, true));
@@ -393,46 +405,78 @@ void LedPanelDriver::startPwmScan() noexcept {
         pwmDmaChannel_,
         &config,
         &kPwmPio->txf[kPwmStateMachine],
-        &pwmWord_,
-        kPwmScansPerFrame,
+        pwmWords_.data(),
+        pwmWords_.size(),
         true);
 }
 
-void LedPanelDriver::waitForPwmScan() noexcept {
-    dma_channel_wait_for_finish_blocking(pwmDmaChannel_);
+bool LedPanelDriver::startPresent(const PixelBuffer& pixels) noexcept {
+    hard_assert(initialized_);
+    if (presenting_) return false;
 
-    // DMA完了時点では最後のPWMワードがFIFO/OSRに残っており、1周約470usある。
-    // ここで古いstallをクリアし、それ以後に発生するFIFO underflowを待てば、
-    // OSRの先読み分を含む全周回の終了を一意に判定できる。
-    const auto stallMask = txStallMask(kPwmStateMachine);
-    kPwmPio->fdebug = stallMask;
-    while ((kPwmPio->fdebug & stallMask) == 0) {
-        tight_loop_contents();
+    const auto activeStartUs = time_us_32();
+    sendCommands();
+    buildLineBuffer(lineBuffers_[0], pixels, 0);
+
+    presentingPixels_ = &pixels;
+    nextScanLine_ = 1;
+    presentActiveUs_ = time_us_32() - activeStartUs;
+    dataTransferComplete_ = false;
+    pwmScanComplete_ = false;
+    presenting_ = true;
+
+    pio_sm_set_enabled(kDataPio, kDataStateMachine, true);
+    startPwmScan();
+    startDataTransfer(lineBuffers_[0]);
+    return true;
+}
+
+void LedPanelDriver::handleDataDmaIrq() noexcept {
+    if (!dma_irqn_get_channel_status(kDataDmaIrqIndex, dataDmaChannel_)) return;
+    dma_irqn_acknowledge_channel(kDataDmaIrqIndex, dataDmaChannel_);
+    if (!presenting_ || presentingPixels_ == nullptr) return;
+
+    if (nextScanLine_ < kScanLines) {
+        const auto activeStartUs = time_us_32();
+        auto& nextBuffer = lineBuffers_[nextScanLine_ & 1u];
+        buildLineBuffer(nextBuffer, *presentingPixels_, nextScanLine_);
+        ++nextScanLine_;
+        startDataTransfer(nextBuffer);
+        presentActiveUs_ += time_us_32() - activeStartUs;
+        return;
     }
+
+    dataTransferComplete_ = true;
+    finishPresentIfReady();
+}
+
+void LedPanelDriver::handlePwmIrq() noexcept {
+    if (!pio_interrupt_get(kPwmPio, 0)) return;
+    pio_interrupt_clear(kPwmPio, 0);
+    if (!presenting_) return;
+    pwmScanComplete_ = true;
+    finishPresentIfReady();
+}
+
+void LedPanelDriver::finishPresentIfReady() noexcept {
+    if (!dataTransferComplete_ || !pwmScanComplete_) return;
+    pio_sm_set_enabled(kDataPio, kDataStateMachine, false);
+    presentingPixels_ = nullptr;
+    lastPresentActiveUs_ = presentActiveUs_;
+    presenting_ = false;
+}
+
+void LedPanelDriver::dmaIrqHandler() {
+    if (instance_ != nullptr) instance_->handleDataDmaIrq();
+}
+
+void LedPanelDriver::pwmIrqHandler() {
+    if (instance_ != nullptr) instance_->handlePwmIrq();
 }
 
 void LedPanelDriver::present(const PixelBuffer& pixels) noexcept {
-    hard_assert(initialized_);
-    const auto activeStartUs = time_us_32();
-
-    sendCommands();
-    pio_sm_set_enabled(kDataPio, kDataStateMachine, true);
-    startPwmScan();
-
-    buildLineBuffer(lineBuffers_[0], pixels, 0);
-    startDataTransfer(lineBuffers_[0]);
-
-    for (std::size_t scanLine = 1; scanLine < kScanLines; ++scanLine) {
-        auto& nextBuffer = lineBuffers_[scanLine & 1u];
-        buildLineBuffer(nextBuffer, pixels, scanLine);
-        waitForDataTransfer();
-        startDataTransfer(nextBuffer);
-    }
-
-    waitForDataTransfer();
-    lastPresentActiveUs_ = time_us_32() - activeStartUs;
-    waitForPwmScan();
-    pio_sm_set_enabled(kDataPio, kDataStateMachine, false);
+    while (!startPresent(pixels)) tight_loop_contents();
+    while (presenting()) tight_loop_contents();
 }
 
 } // namespace pixel_twins::rp2350

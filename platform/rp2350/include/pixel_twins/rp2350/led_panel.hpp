@@ -15,6 +15,8 @@ public:
 
     void initialize() noexcept;
     void setPalette(const Palette& palette) noexcept PIXEL_TWINS_SRAM;
+    [[nodiscard]] bool startPresent(const PixelBuffer& pixels) noexcept PIXEL_TWINS_SRAM;
+    [[nodiscard]] bool presenting() const noexcept { return presenting_; }
     void present(const PixelBuffer& pixels) noexcept PIXEL_TWINS_SRAM;
     [[nodiscard]] std::uint32_t lastPresentActiveUs() const noexcept {
         return lastPresentActiveUs_;
@@ -26,6 +28,7 @@ private:
     static constexpr std::size_t kLineBufferWords = 1 + kLineDataWords;
     static constexpr std::size_t kCommand0Capacity = 48;
     static constexpr std::size_t kCommand1Capacity = 512;
+    static constexpr std::size_t kPwmWordCount = 36;
 
     using ColorSequence = std::array<std::uint32_t, kSequenceWords>;
     using LineBuffer = std::array<std::uint32_t, kLineBufferWords>;
@@ -34,11 +37,15 @@ private:
                          const PixelBuffer& pixels,
                          std::size_t scanLine) noexcept PIXEL_TWINS_SRAM;
     void startDataTransfer(const LineBuffer& buffer) noexcept PIXEL_TWINS_SRAM;
-    void waitForDataTransfer() noexcept PIXEL_TWINS_SRAM;
     void sendCommands() noexcept PIXEL_TWINS_SRAM;
     void startPwmScan() noexcept PIXEL_TWINS_SRAM;
-    void waitForPwmScan() noexcept PIXEL_TWINS_SRAM;
+    void handleDataDmaIrq() noexcept PIXEL_TWINS_SRAM;
+    void handlePwmIrq() noexcept PIXEL_TWINS_SRAM;
+    void finishPresentIfReady() noexcept PIXEL_TWINS_SRAM;
+    static void dmaIrqHandler();
+    static void pwmIrqHandler();
 
+    static LedPanelDriver* instance_;
     std::array<ColorSequence, kPaletteSize> colorSequences_;
     std::array<LineBuffer, 2> lineBuffers_;
     std::array<std::uint32_t, kCommand0Capacity> command0_;
@@ -48,11 +55,17 @@ private:
     int dataDmaChannel_;
     int commandDmaChannel_;
     int pwmDmaChannel_;
-    std::uint32_t pwmWord_;
+    std::array<std::uint32_t, kPwmWordCount> pwmWords_;
     std::uint32_t commandProgramOffset_;
     std::uint32_t dataProgramOffset_;
     std::uint32_t pwmProgramOffset_;
     std::uint32_t lastPresentActiveUs_;
+    const PixelBuffer* presentingPixels_;
+    std::size_t nextScanLine_;
+    std::uint32_t presentActiveUs_;
+    volatile bool dataTransferComplete_;
+    volatile bool pwmScanComplete_;
+    volatile bool presenting_;
     bool initialized_;
 };
 
