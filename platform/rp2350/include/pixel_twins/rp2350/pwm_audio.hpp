@@ -26,6 +26,7 @@ public:
     [[nodiscard]] bool stopBgm() noexcept;
     [[nodiscard]] bool stopAll() noexcept;
     [[nodiscard]] bool playSfx(const SfxRequest& request) noexcept;
+    [[nodiscard]] bool setMasterVolume(float volume) noexcept;
     void suspendForFlash() noexcept;
     void resumeAfterFlash() noexcept;
 
@@ -38,11 +39,13 @@ private:
         PlayBgm,
         StopBgm,
         StopAll,
+        SetMasterVolume,
     };
 
     struct Command {
         CommandKind kind = CommandKind::StopBgm;
         const Sequence* sequence = nullptr;
+        float volume = 1.0F;
     };
 
     static constexpr std::size_t kBufferCount = 2;

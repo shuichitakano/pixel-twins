@@ -17,7 +17,8 @@ const Timbre kLongRight{
 
 SfxRequest request(const Timbre& timbre, std::uint8_t priority) {
     return SfxRequest{VoiceStart{&timbre, 1500.0F, 1500.0F, 0.0F, 1.0F, 1.0F, 0.0F},
-                      priority};
+                      priority,
+                      0};
 }
 
 void testQueueCapacityAndOrder() {
@@ -86,6 +87,20 @@ void testStopAllDiscardsPendingRequests() {
     check(output[0] == 0);
 }
 
+void testDelayedRequestStartsAfterRequestedBlocks() {
+    AudioSystem audio;
+    auto delayed = request(kLongLeft, 1);
+    delayed.delayBlocks = 2;
+    check(audio.playSfx(delayed));
+    AudioBlock output{};
+    audio.renderBlock(output);
+    check(output[0] == 0);
+    audio.renderBlock(output);
+    check(output[0] == 0);
+    audio.renderBlock(output);
+    check(output[0] > 0);
+}
+
 } // namespace
 
 int main() {
@@ -94,5 +109,6 @@ int main() {
     testPriorityPreventsSteal();
     testInvalidRequestIsRejected();
     testStopAllDiscardsPendingRequests();
+    testDelayedRequestStartsAfterRequestedBlocks();
     return 0;
 }

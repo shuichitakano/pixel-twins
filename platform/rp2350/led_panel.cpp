@@ -188,7 +188,8 @@ LedPanelDriver::LedPanelDriver() noexcept
       holding_(false),
       holdStopRequested_(false),
       initialized_(false),
-      gamma_(2.2F) {}
+      gamma_(2.2F),
+      brightness_(1.0F) {}
 
 void LedPanelDriver::initialize() noexcept {
     if (initialized_) return;
@@ -314,12 +315,31 @@ void LedPanelDriver::setGamma(float gamma) noexcept {
 
 void LedPanelDriver::setPalette(const Palette& palette) noexcept {
     for (std::size_t color = 0; color < palette.size(); ++color) {
+        baseColors_[color] = {{
+            gammaTo12Bit(palette[color].r, gamma_),
+            gammaTo12Bit(palette[color].g, gamma_),
+            gammaTo12Bit(palette[color].b, gamma_),
+        }};
+    }
+    rebuildColorSequences();
+}
+
+void LedPanelDriver::setBrightness(float brightness) noexcept {
+    brightness_ = std::clamp(brightness, 0.0F, 1.0F);
+    rebuildColorSequences();
+}
+
+void LedPanelDriver::rebuildColorSequences() noexcept {
+    for (std::size_t color = 0; color < colorSequences_.size(); ++color) {
         auto& sequence = colorSequences_[color];
         sequence.fill(0);
 
-        const auto red = gammaTo12Bit(palette[color].r, gamma_);
-        const auto green = gammaTo12Bit(palette[color].g, gamma_);
-        const auto blue = gammaTo12Bit(palette[color].b, gamma_);
+        const auto red = static_cast<std::uint16_t>(
+            static_cast<float>(baseColors_[color][0]) * brightness_ + 0.5F);
+        const auto green = static_cast<std::uint16_t>(
+            static_cast<float>(baseColors_[color][1]) * brightness_ + 0.5F);
+        const auto blue = static_cast<std::uint16_t>(
+            static_cast<float>(baseColors_[color][2]) * brightness_ + 0.5F);
 
         for (std::size_t bit = 0; bit < kBrightnessBits; ++bit) {
             const auto mask = static_cast<std::uint16_t>(

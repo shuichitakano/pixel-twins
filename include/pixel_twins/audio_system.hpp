@@ -15,6 +15,7 @@ inline constexpr std::size_t kSfxRequestCapacity = 32;
 struct SfxRequest {
     VoiceStart voice;
     std::uint8_t priority = 0;
+    std::uint16_t delayBlocks = 0;
 };
 
 struct SfxPreset {
@@ -37,9 +38,10 @@ struct SfxPreset {
              preset.holdSeconds,
              preset.velocity,
              pan,
-             preset.pitchCurve,
-             1.0F},
-            preset.priority};
+            preset.pitchCurve,
+            1.0F},
+            preset.priority,
+            0};
 }
 
 class SfxRequestQueue {
@@ -73,11 +75,19 @@ public:
     [[nodiscard]] const Synthesizer& synthesizer() const noexcept { return synthesizer_; }
 
 private:
+    struct DelayedSfx {
+        SfxRequest request{};
+        std::uint16_t remainingBlocks = 0;
+        bool active = false;
+    };
+
     void startSfx(const SfxRequest& request) noexcept;
+    void scheduleSfx(const SfxRequest& request) noexcept;
 
     SfxRequestQueue sfxRequests_{};
     Synthesizer synthesizer_{};
     Sequencer sequencer_{};
+    std::array<DelayedSfx, kSfxRequestCapacity> delayedSfx_{};
     std::array<std::uint8_t, kSfxVoiceCount> sfxPriorities_{};
     std::array<std::uint32_t, kSfxVoiceCount> sfxAges_{};
     std::uint32_t nextAge_ = 1;

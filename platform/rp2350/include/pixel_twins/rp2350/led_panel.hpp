@@ -16,6 +16,8 @@ public:
     void initialize() noexcept;
     void setGamma(float gamma) noexcept;
     [[nodiscard]] float gamma() const noexcept { return gamma_; }
+    void setBrightness(float brightness) noexcept PIXEL_TWINS_SRAM;
+    [[nodiscard]] float brightness() const noexcept { return brightness_; }
     void setPalette(const Palette& palette) noexcept PIXEL_TWINS_SRAM;
     [[nodiscard]] bool startPresent(const PixelBuffer& pixels) noexcept PIXEL_TWINS_SRAM;
     [[nodiscard]] bool presenting() const noexcept { return presenting_; }
@@ -39,11 +41,13 @@ private:
     static constexpr std::size_t kPwmWordCount = 36;
 
     using ColorSequence = std::array<std::uint32_t, kSequenceWords>;
+    using BaseColor = std::array<std::uint16_t, 3>;
     using LineBuffer = std::array<std::uint32_t, kLineBufferWords>;
 
     void buildLineBuffer(LineBuffer& destination,
                          const PixelBuffer& pixels,
                          std::size_t scanLine) noexcept PIXEL_TWINS_SRAM;
+    void rebuildColorSequences() noexcept PIXEL_TWINS_SRAM;
     void startDataTransfer(const LineBuffer& buffer) noexcept PIXEL_TWINS_SRAM;
     void sendCommands() noexcept PIXEL_TWINS_SRAM;
     void startPwmScan() noexcept PIXEL_TWINS_SRAM;
@@ -56,6 +60,7 @@ private:
 
     static LedPanelDriver* instance_;
     std::array<ColorSequence, kPaletteSize> colorSequences_;
+    std::array<BaseColor, kPaletteSize> baseColors_;
     std::array<LineBuffer, 2> lineBuffers_;
     std::array<std::uint32_t, kCommand0Capacity> command0_;
     std::array<std::uint32_t, kCommand1Capacity> command1_;
@@ -81,6 +86,7 @@ private:
     volatile bool holdStopRequested_;
     bool initialized_;
     float gamma_;
+    float brightness_;
 };
 
 } // namespace pixel_twins::rp2350

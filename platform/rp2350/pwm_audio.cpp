@@ -10,6 +10,7 @@
 #include "hardware/structs/pwm.h"
 #include "pico/stdlib.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 
@@ -123,19 +124,24 @@ bool PwmAudioPlayer::initialize() noexcept {
 }
 
 bool PwmAudioPlayer::playBgm(const Sequence& sequence) noexcept {
-    return enqueue({CommandKind::PlayBgm, &sequence});
+    return enqueue({CommandKind::PlayBgm, &sequence, 1.0F});
 }
 
 bool PwmAudioPlayer::stopBgm() noexcept {
-    return enqueue({CommandKind::StopBgm, nullptr});
+    return enqueue({CommandKind::StopBgm, nullptr, 1.0F});
 }
 
 bool PwmAudioPlayer::stopAll() noexcept {
-    return enqueue({CommandKind::StopAll, nullptr});
+    return enqueue({CommandKind::StopAll, nullptr, 1.0F});
 }
 
 bool PwmAudioPlayer::playSfx(const SfxRequest& request) noexcept {
     return audioSystem_.playSfx(request);
+}
+
+bool PwmAudioPlayer::setMasterVolume(float volume) noexcept {
+    return enqueue({CommandKind::SetMasterVolume, nullptr,
+                    std::clamp(volume, 0.0F, 1.0F)});
 }
 
 void PwmAudioPlayer::suspendForFlash() noexcept {
@@ -148,8 +154,6 @@ void PwmAudioPlayer::suspendForFlash() noexcept {
     const auto rightChannel = pwm_gpio_to_channel(rightPin);
 
     irq_set_enabled(kAudioDmaIrq, false);
-    pwm_set_enabled(leftSlice, false);
-    pwm_set_enabled(rightSlice, false);
     for (std::size_t index = 0; index < kBufferCount; ++index) {
         dma_channel_abort(leftDmaChannels_[index]);
         dma_channel_abort(rightDmaChannels_[index]);
@@ -158,6 +162,7 @@ void PwmAudioPlayer::suspendForFlash() noexcept {
     }
     const auto midpoint = static_cast<std::uint16_t>(
         (static_cast<std::uint32_t>(pwmTop_) + 1u) / 2u);
+    // Flash中もPWMカウンタは止めず、50% dutyでDCバイアスを維持する。
     pwm_set_chan_level(leftSlice, leftChannel, midpoint);
     pwm_set_chan_level(rightSlice, rightChannel, midpoint);
     flashSuspended_ = true;
@@ -214,6 +219,9 @@ void PwmAudioPlayer::applyCommands() noexcept {
             break;
         case CommandKind::StopAll:
             audioSystem_.stopAll();
+            break;
+        case CommandKind::SetMasterVolume:
+            audioSystem_.setMasterVolume(command.volume);
             break;
         }
         ++read;

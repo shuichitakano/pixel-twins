@@ -42,6 +42,7 @@ void AudioSystem::stopAll() noexcept {
     synthesizer_.stopAll();
     for (auto& priority : sfxPriorities_) priority = 0;
     for (auto& age : sfxAges_) age = 0;
+    for (auto& delayed : delayedSfx_) delayed = {};
     SfxRequest discarded;
     while (sfxRequests_.tryPop(discarded)) {
     }
@@ -69,10 +70,32 @@ void AudioSystem::renderBlock(AudioBlock& output) noexcept {
 }
 
 void AudioSystem::renderFrames(void* context, AudioFrameWriter writer) noexcept {
+    for (auto& delayed : delayedSfx_) {
+        if (!delayed.active) continue;
+        if (delayed.remainingBlocks > 0) --delayed.remainingBlocks;
+        if (delayed.remainingBlocks == 0) {
+            startSfx(delayed.request);
+            delayed.active = false;
+        }
+    }
     SfxRequest request;
-    while (sfxRequests_.tryPop(request)) startSfx(request);
+    while (sfxRequests_.tryPop(request)) scheduleSfx(request);
     sequencer_.advanceBlock(synthesizer_);
     synthesizer_.renderFrames(context, writer);
+}
+
+void AudioSystem::scheduleSfx(const SfxRequest& request) noexcept {
+    if (request.delayBlocks == 0) {
+        startSfx(request);
+        return;
+    }
+    for (auto& delayed : delayedSfx_) {
+        if (delayed.active) continue;
+        delayed.request = request;
+        delayed.remainingBlocks = request.delayBlocks;
+        delayed.active = true;
+        return;
+    }
 }
 
 void AudioSystem::startSfx(const SfxRequest& request) noexcept {
